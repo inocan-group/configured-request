@@ -1,6 +1,6 @@
 {
   "name": "configured-request",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "configured-request",
   "license": "MIT",
   "repository": "https://your-server.com/inocan-group/configured-request",
@@ -12,7 +12,7 @@
   "files": [
     "dist"
   ],
-  "main": "lib/index.js",
+  "main": "dist/index.js",
   "module": "dist/esnext/index.js",
   "browser": "dist/cjs/index.js",
   "typings": "dist/esnext/index.d.ts",
