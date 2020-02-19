@@ -1,6 +1,6 @@
 import { HttpStatusCodes } from "common-types";
 
-export class RequestError extends Error {
+export class ConfiguredRequestError extends Error {
   public code: string;
   public statusCode: number;
 

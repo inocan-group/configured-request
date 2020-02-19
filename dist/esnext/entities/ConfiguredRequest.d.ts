@@ -1,8 +1,8 @@
 import { IDictionary, url, IHttpRequestHeaders } from "common-types";
-import { IApiMock } from "./index";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IRequestInfo } from "./cr-types";
+import { IAllRequestOptions, IApiInput } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
 /**
  * **Request**
@@ -22,7 +22,7 @@ export declare class ConfiguredRequest<
  * The **input** requirements to call this endpoint; these requirements can derive from URL, body, or
  * query parameter inputs.
  */
-I extends IDictionary = IDictionary, 
+I extends IApiInput, 
 /**
  * The **output** of the API Endpoint
  */
@@ -45,10 +45,10 @@ X extends IDictionary = IDictionary> {
      */
     private _dynamics;
     private _method;
-    static get<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static post<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static put<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static delete<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
     /** add a mock function for this API endpoint */
     mock(fn: IApiMock<I, O>): Promise<this>;
     isMockRequest(options?: IDictionary & {
@@ -83,18 +83,18 @@ X extends IDictionary = IDictionary> {
      * @param options any Axios options which you want to pass along; this will be combined
      * with any options which were included in `_designOptions`.
      */
-    request(props?: I, runTimeOptions?: IDictionary): Promise<O>;
+    request(props?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
     /**
      * If there are Axios request options which you which to pass along for every request
      * you can do that by setting them here. Note that each request can also send options
      * and these two dictionaries will be merged where the request's options will take precedence.
      */
-    axiosOptions(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">): this;
+    options(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">): this;
     /**
      * Provides full detail on the `url`, `headers` and `body` of the message
      * but _does not_ send it.
      */
-    requestInfo(props?: Partial<I>): IRequestInfo;
+    requestInfo(props?: Partial<I>, runTimeOptions?: IAllRequestOptions): IConfiguredApiRequest<I>;
     /**
      * Seals the configuration of the API endpoint and returns
      * a `SealedRequest` which can be used only to make/execute

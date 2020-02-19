@@ -1,5 +1,5 @@
 import { IDictionary } from "common-types";
-import { Scalar } from "./index";
+import { Scalar } from "../index";
 
 export function dynamic<
   T = Scalar,

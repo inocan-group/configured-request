@@ -7,15 +7,27 @@ import {
 import {
   DynamicStateLocation,
   IDynamicProperty,
-  IRequestMethod,
-  IEndpointMock,
-  Scalar
-} from "./index";
-import { RequestError } from "./ConfiguredRequestError";
+  IRequestVerb,
+  IApiMock,
+  Scalar,
+  IConfiguredApiRequest,
+  bodyToString,
+  IApiInputWithBody,
+  IApiInputWithoutBody
+} from "../index";
+import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IRequestInfo, IApiBodyType } from "./cr-types";
+import {
+  IApiBodyType,
+  ILiteralType,
+  IAllRequestOptions,
+  IMockOptions,
+  IApiInput,
+  isLiteralType
+} from "../cr-types";
+import { extract } from "../shared/extract";
 
 export const DEFAULT_HEADERS: IDictionary<string> = {
   "User-Agent":
@@ -43,7 +55,7 @@ export class ConfiguredRequest<
    * The **input** requirements to call this endpoint; these requirements can derive from URL, body, or
    * query parameter inputs.
    */
-  I extends IDictionary = IDictionary,
+  I extends IApiInput,
   /**
    * The **output** of the API Endpoint
    */
@@ -58,9 +70,9 @@ export class ConfiguredRequest<
   private _headers: IDictionary = {};
   private _designOptions: IDictionary = {};
   private _url: string;
-  private _body?: string;
-  private _bodyType: IApiBodyType = "none";
-  private _mockFn?: IEndpointMock<I, O>;
+  private _body?: I["body"] | ILiteralType;
+  private _bodyType: IApiBodyType = "JSON";
+  private _mockFn?: IApiMock<I, O>;
   private _mapping: (input: X) => O;
   /**
    * The various _dynamic_ aspects of the API call
@@ -68,10 +80,10 @@ export class ConfiguredRequest<
   private _dynamics: Array<
     IDynamicProperty & { type: DynamicStateLocation }
   > = [];
-  private _method: IRequestMethod;
+  private _method: IRequestVerb;
   //#region static initializers
   static get<
-    I extends IDictionary = IDictionary,
+    I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IDictionary = IDictionary,
     X extends IDictionary = IDictionary
   >(url: string) {
@@ -81,7 +93,7 @@ export class ConfiguredRequest<
     return obj;
   }
   static post<
-    I extends IDictionary = IDictionary,
+    I extends IApiInputWithBody = IApiInputWithBody,
     O extends IDictionary = IDictionary,
     X extends IDictionary = IDictionary
   >(url: string) {
@@ -91,7 +103,7 @@ export class ConfiguredRequest<
     return obj;
   }
   static put<
-    I extends IDictionary = IDictionary,
+    I extends IApiInputWithBody = IApiInputWithBody,
     O extends IDictionary = IDictionary,
     X extends IDictionary = IDictionary
   >(url: string) {
@@ -101,7 +113,7 @@ export class ConfiguredRequest<
     return obj;
   }
   static delete<
-    I extends IDictionary = IDictionary,
+    I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IDictionary = IDictionary,
     X extends IDictionary = IDictionary
   >(url: string) {
@@ -113,7 +125,7 @@ export class ConfiguredRequest<
   //#endregion
 
   /** add a mock function for this API endpoint */
-  async mock(fn: IEndpointMock<I, O>) {
+  async mock(fn: IApiMock<I, O>) {
     this._mockFn = fn;
     return this;
   }
@@ -121,8 +133,8 @@ export class ConfiguredRequest<
   isMockRequest(options: IDictionary & { mock?: boolean } = {}) {
     return (
       options.mock ||
-      process.env["VUE_APP_MOCK_REQUEST"] ||
-      process.env["MOCK_REQUEST"] ||
+      process.env["MOCK_API"] ||
+      process.env["VUE_APP_MOCK_API"] ||
       false
     );
   }
@@ -187,26 +199,25 @@ export class ConfiguredRequest<
    * @param options any Axios options which you want to pass along; this will be combined
    * with any options which were included in `_designOptions`.
    */
-  async request(props?: I, runTimeOptions: IDictionary = {}) {
-    const { url, headers } = this.requestInfo(props);
-
+  async request(props?: I, runTimeOptions: IAllRequestOptions = {}) {
+    const request = this.requestInfo(props, runTimeOptions);
+    const isMockRequest = this.isMockRequest(request.mockConfig);
+    const axiosOptions = { headers: request.headers, ...request.axiosOptions };
     let result: AxiosResponse<O>;
-    const options = { ...this._designOptions, ...runTimeOptions, headers };
-    const isMockRequest = this.isMockRequest(options);
 
     // MOCK or NETWORK REQUEST
     if (isMockRequest) {
-      result = await this.mockRequest(options);
+      result = await this.mockRequest(request, axiosOptions);
     } else {
-      result = await this.makeRequest(this._body, url, options);
+      result = await this.makeRequest(request, axiosOptions);
     }
 
     // THROW on ERROR
     if (result.status >= 300) {
-      throw new RequestError(
-        `The API endpoint [ ${this._method.toUpperCase()} ${url} ] failed with a ${
-          result.status
-        } / ${result.statusText}} error code.`,
+      throw new ConfiguredRequestError(
+        `The API endpoint [ ${this._method.toUpperCase()} ${
+          request.url
+        } ] failed with a ${result.status} / ${result.statusText}} error code.`,
         String(result.status),
         result.status
       );
@@ -223,9 +234,8 @@ export class ConfiguredRequest<
    * you can do that by setting them here. Note that each request can also send options
    * and these two dictionaries will be merged where the request's options will take precedence.
    */
-  axiosOptions(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">) {
+  options(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">) {
     this._designOptions = opts;
-
     return this;
   }
 
@@ -233,15 +243,41 @@ export class ConfiguredRequest<
    * Provides full detail on the `url`, `headers` and `body` of the message
    * but _does not_ send it.
    */
-  requestInfo(props?: Partial<I>): IRequestInfo {
-    const qp = {
+  requestInfo(
+    props?: Partial<I>,
+    runTimeOptions: IAllRequestOptions = {}
+  ): IConfiguredApiRequest<I> {
+    const queryParameters: IDictionary<Scalar> = {
       ...this.getDynamics(DynamicStateLocation.queryParameter, props),
       ...this._qp
     };
+    const hasQueryParameters =
+      Object.keys(queryParameters).length > 0 ? true : false;
 
     const url = this._url
       .split("{")
-      .map(i => i.replace(/(.*})/, ""))
+      .map((urlPart, idx) => {
+        if (idx === 0) {
+          return urlPart;
+        }
+        const partial = urlPart.replace(/}.*/, "");
+        const [propName, defaultValue] = partial.includes(":")
+          ? partial.split(":")
+          : [partial, Symbol("default-value-undefined")];
+        const hasDefaultValue =
+          defaultValue !== Symbol("default-value-undefined") ? true : false;
+        const requestHasValue = props && Object.keys(props).includes(propName);
+        console.log({ defaultValue });
+
+        if (hasDefaultValue || requestHasValue) {
+          return requestHasValue ? props[propName] : defaultValue;
+        } else {
+          throw new ConfiguredRequestError(
+            `Attempt to build URL failed because there was no default value for "${propName}" nor was this passed into the request!`,
+            "url-dynamics-invalid"
+          );
+        }
+      })
       .join("");
 
     const headers = {
@@ -250,12 +286,40 @@ export class ConfiguredRequest<
       ...this.getDynamics(DynamicStateLocation.header, props)
     };
 
+    const bodyType: IApiBodyType = ["get", "delete"].includes(this._method)
+      ? "none"
+      : this._bodyType;
+
+    const templateBody = this._body || {};
+    const requestBody = props && props.body ? props.body : {};
+    const payload = { ...templateBody, ...requestBody };
+    const body = bodyToString(payload, bodyType);
+
+    const [mockConfig, axiosOptions] = extract<
+      IMockOptions,
+      AxiosRequestConfig
+    >({ ...this._designOptions, ...runTimeOptions }, [
+      "mock",
+      "networkDelay",
+      "authWhiteList",
+      "authBlacklist"
+    ]);
+
     return {
+      props: props as I,
       method: this._method,
-      url: qp ? url + "?" + queryString.stringify(qp) : url,
+      url: hasQueryParameters
+        ? url + "?" + queryString.stringify(queryParameters)
+        : url,
       headers,
-      options: this._designOptions,
-      ...(this._method !== "get" ? { body: this._body } : {})
+      queryParameters,
+      payload: isLiteralType(payload)
+        ? (payload as ILiteralType)
+        : (payload as I["body"]),
+      bodyType,
+      body,
+      mockConfig,
+      axiosOptions
     };
   }
 
@@ -299,7 +363,7 @@ export class ConfiguredRequest<
       parts.slice(1).forEach(part => {
         const endDelimiter = part.indexOf("}");
         if (endDelimiter === -1) {
-          throw new RequestError(
+          throw new ConfiguredRequestError(
             `The structure of the URL parameter is invalid. URL's which have dynamic parameters as part of the URL must be delimited by a openning and closing curly brackets. The current URL appears to have a mismatch of openning and closing brackets. The URL is: ${url}`,
             "invalid-url"
           );
@@ -324,10 +388,13 @@ export class ConfiguredRequest<
    * @param url The URL including query parameters
    * @param options Mock options
    */
-  private async mockRequest(options: IDictionary): Promise<AxiosResponse<O>> {
+  private async mockRequest(
+    request: IConfiguredApiRequest<I>,
+    options: AxiosRequestConfig
+  ): Promise<AxiosResponse<O>> {
     // TODO: Implement
     return {
-      data: this._mockFn ? (this._mockFn(this) as O) : ({} as O),
+      data: this._mockFn ? (this._mockFn(request) as O) : ({} as O),
       status: HttpStatusCodes.NotImplemented,
       statusText: "Not Implemented",
       headers: {},
@@ -342,18 +409,22 @@ export class ConfiguredRequest<
    * @param url The URL including query parameters
    * @param options Axios options to pass along to the request
    */
-  private async makeRequest(body: Scalar, url: string, options: IDictionary) {
+  private async makeRequest(
+    request: IConfiguredApiRequest<I>,
+    options: IDictionary
+  ) {
+    const { url, body } = request;
     switch (this._method) {
       case "get":
         return axios.get<O>(url, options);
       case "put":
-        return axios.put<O>(url, this._body, options);
+        return axios.put<O>(url, body, options);
       case "post":
-        return axios.put<O>(url, this._body, options);
+        return axios.put<O>(url, body, options);
       case "delete":
         return axios.delete<O>(url, options);
       case "patch":
-        return axios.patch<O>(url, this._body, options);
+        return axios.patch<O>(url, body, options);
     }
   }
 

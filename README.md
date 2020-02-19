@@ -83,9 +83,7 @@ That's a quick summary of the top line features. We will now go into greater det
 
 > **Note:** it's worth noting that the call to `.seal()` at the end of the definition is not 100% required but it packages up the configuration and provides consumers with a reduced API surface that is intended only for usage not for configuration.
 
-## Features
-
-### Basic Config
+## Basic Config
 
 The `.queryParameters()` method was demonstrated in the example above but you also get:
 
@@ -130,7 +128,7 @@ The `.queryParameters()` method was demonstrated in the example above but you al
 
 We have now covered the primary aspects of "state" that you might want to configure for an API endpoint, however, we were a bit _implicit_ about the URL itself as that is another area where we often see important state being conveyed. So, let's get explicit about the URL.
 
-#### The URL
+### The URL
 
 The URL gets stated along with the method and might look like any of the following:
 
@@ -148,10 +146,163 @@ In the second and third examples, the dynamic property name is followed by a col
 
 When a dynamic URL property has a default value it is considered _optional_ and can be left off of the actual network request.
 
-#### The `dynamic` symbol
+### The `dynamic` symbol
 
 While the URL defines dynamic properties with curly brackets, both _headers_ and _query-parameters_ leverage the `dynamic` export from this repo. We've already seen examples of this but here we'll detail out the capabilities of this helpful utility. The basic structure of **dynamic** is:
 
 ```typescript
-dynamic<I,O>(defaultValue: Scalar | DynamicFunction<O>, required: boolean = false)
+dynamic<I,O>(defaultValue: undefined | Scalar | DynamicFunction<O>, required: boolean = false)
+```
+
+So in the many cases the main thing you're stating with dynamic is that a given property is available as a dynamic property. The property _isn't_ required and it might or might now have a default value. Examples of this include:
+
+```typescript
+// not required, with default value
+API.queryParameters({ limit: dynamic(10), offset: dynamic(0) });
+// not required, no default value
+API.headers({ Store: dynamic() });
+```
+
+You can of course, make a property _required_ by setting the second property to `true`. That's pretty pretty straightforward so we'll skip the example. What is distinct though is when we use `dynamic()` with a `DynamicFunction`. A dynamic function is defined as:
+
+```typescript
+export type NamedValuePair = [PropertyName, Scalar];
+export type DynamicFunction<I> = (request: I) => Scalar | NamedValuePair;
+```
+
+To see this used in context, here is an example:
+
+```typescript
+API.headers({
+  ...dynamic(req => ["Authorization", `Bearer ${req.token}`], true),
+  Store: dynamic(req => req.store)
+});
+```
+
+In the case of the first usage, the consumers will be able to pass in a `token` in the request and this will be transformed into a standard [Bearer Token](https://swagger.io/docs/specification/authentication/bearer-authentication/).
+
+## Basic usage
+
+As a consumer of a configured API, you will be receiving a `SealedRequest` class which provides a compact API for you to make requests with. An example would be:
+
+```typescript
+try {
+  const products = await ProductList.request({ offset: 500, limit: 50 });
+  // do things
+} catch (e) {
+  // if the API fails for any reason a `ConfiguredRequestError` will be thrown
+}
+```
+
+The usage interface is both compact and fully typed so usage should be very intuitive and to keep the docs up-to-date, we'll point you to the Typescript typings for the best docs.
+
+## Advanced features
+
+### Mocking
+
+You can pass in a _mock function_ to the configuration which will mock an API response (given a request as an input). This function will look like:
+
+```typescript
+// define the mock
+const mockFn: IApiMock<I, O> = (
+  request: I,
+  config: ConfiguredRequest<I, O>
+) => {
+  if (["productId", "operation"].every(i => request[i] !== undefined)) {
+    return {
+      id: "1234",
+      name: "Magic Carpet"
+    };
+  } else {
+    throw new HttpError(
+      HttpStatusCodes.Forbidden,
+      "Required fields were missing"
+    );
+  }
+};
+
+// add the mock to the API definition
+const myApi = API.mockFn(mock).seal();
+```
+
+With this mocking capability now available, the consumers can leverage this through two means:
+
+1.  **Consumer's `.mock()` API**
+
+    When a consumer uses a sealed API they get both the `.request()` and `.mock()` methods which
+    call the actual and mock API respectively. In the example below you will be assured of calling
+    the _mock_ API:
+
+    ```typescript
+    import { ProductDetail } from "./queries";
+    const product = await ProductDetail.mock({ id: "1234" });
+    ```
+
+2.  **ENV variables**
+
+    While calling `.mock()` _always_ results in a mocked API call, calling `.request()` will switch between
+    calling the _real_ API and the _mock_ API based on environment variables. The following ENV variables impact the behavior of `.request()`:
+
+    - `MOCK_API`
+
+          This is just a boolean flag; when it is set -- by convention to the value `true` but in reality, any value other than `false` -- will activate mock requests for all API's.
+
+    - `MOCK_API_NETWORK_DELAY`
+
+          Mock API's have a simulated "network delay" added automatically. By default this is very mild (10-50ms per request) but you can set this variable to:
+
+          - `medium` - delay between 50ms and 150ms
+          - `heavy` - delay between 150ms and 500ms
+          - `very-heavy` - delay between 1 and 2 seconds
+
+          Unrecognized values will be ignored. Also note that if you have some API endpoints which you want to notate as being slower than the default, you can configure the API directly on `object.networkDelay()` or statically as `ConfigureRequest.networkDelay()` to set this across all APIs.
+
+    - `MOCK_API_AUTH_BLACKLIST`
+
+          You can set one or more "tokens" which should be deemed invalid and therefore when passed in, it will allow your mock functions to throw AUTH errors. This is achieved by having the mock function pickup the blacklist and respond:
+
+          ```typescript
+          process.env.MOCK_API_AUTH_BLACKLIST="1234,4567";
+          const mockFn = (request, config) => {
+            if (config.authBlacklist.includes(request.token)) {
+              throw new AuthError(`The token ${request.token} was on the blacklist for AUTH`)
+            }
+            return { id: request.id, name: 'Bob Marley', age: 55 }
+          }
+
+          const UserProfile = ConfiguredRequest
+            .get<{id: string, token: string}, { id: string, name: string, age: number}>(URL)
+            .mockFn( mockFn )
+          ```
+
+          In addition to this ENV variable you _can_ configure this statically for all APIs at `ConfigureRequest.setBlacklist()`.
+
+          > **Note:** the environment variable's value will be treated as a comma separated list.
+
+    - `MOCK_API_AUTH_WHITELIST`
+
+          The same principle as _black listing_ but instead you list tokens which are considered valid. In general you should choose between _white_ and _black_ listing but not use both.
+
+## Result Mapping
+
+Sometimes the results you get back from an API aren't precisely what you want. In these cases it is easy to map the result to a different structure or set of values. Imagine as an example that you call to get a UserProfile but the external system uses numbers to represent an `id` but internally you prefer to represent the `id` as a string:
+
+```typescript
+const UserProfile = ConfiguredRequest.get<I, O, X>(URL)
+  .mapper((profile: X) => {
+    return { ...profile, id: String(profile.id) } as O;
+  })
+  .seal();
+```
+
+In this example the _mapper_ is pretty clear. When the API returns all results "as is" (in this case just a single UserProfile record). In our example the API returns a profile with a numeric `id` but after the mapping the `id` is a string. As is standard, the `I` and `O` types represent the overall _input_ and _output_ but we now have an `X` type. The `X` type represents the _intermediate_ type that the API returns. You _can_ leave off defining `X` and just focus on the inputs and outputs but in most cases where you use a mapper, you should define X as well:
+
+```typescript
+interface I { id: string };
+interface IResponse<T = string> {
+  id: T,
+  name: string
+};
+interface O = IResponse;
+interface X = IResponse<number>;
 ```
