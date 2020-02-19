@@ -73,6 +73,7 @@ export interface ILiteralType {
     type: "LITERAL_BODY_PAYLOAD";
     value: string;
 }
+export declare function isLiteralType<I extends IApiInput>(body: I["body"] | ILiteralType): body is ILiteralType;
 export interface IApiInputWithBody extends IDictionary {
     body: IDictionary<Scalar>;
 }

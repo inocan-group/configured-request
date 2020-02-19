@@ -27,3 +27,7 @@ var ApiBodyType;
     ApiBodyType["none"] = "none";
 })(ApiBodyType = exports.ApiBodyType || (exports.ApiBodyType = {}));
 exports.LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
+function isLiteralType(body) {
+    return body.type === exports.LITERAL_TYPE ? true : false;
+}
+exports.isLiteralType = isLiteralType;

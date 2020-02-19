@@ -25,3 +25,6 @@ export var ApiBodyType;
     ApiBodyType["none"] = "none";
 })(ApiBodyType || (ApiBodyType = {}));
 export const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
+export function isLiteralType(body) {
+    return body.type === LITERAL_TYPE ? true : false;
+}

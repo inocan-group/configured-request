@@ -4,6 +4,7 @@ import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios from "axios";
 import { SealedRequest } from "./SealedRequest";
+import { isLiteralType } from "../cr-types";
 import { extract } from "../shared/extract";
 export const DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
@@ -29,7 +30,7 @@ export class ConfiguredRequest {
         this._qp = {};
         this._headers = {};
         this._designOptions = {};
-        this._bodyType = "none";
+        this._bodyType = "JSON";
         /**
          * The various _dynamic_ aspects of the API call
          */
@@ -156,15 +157,36 @@ export class ConfiguredRequest {
      */
     requestInfo(props, runTimeOptions = {}) {
         const queryParameters = Object.assign(Object.assign({}, this.getDynamics(DynamicStateLocation.queryParameter, props)), this._qp);
+        const hasQueryParameters = Object.keys(queryParameters).length > 0 ? true : false;
         const url = this._url
             .split("{")
-            .map(i => i.replace(/(.*})/, ""))
+            .map((urlPart, idx) => {
+            if (idx === 0) {
+                return urlPart;
+            }
+            const partial = urlPart.replace(/}.*/, "");
+            const [propName, defaultValue] = partial.includes(":")
+                ? partial.split(":")
+                : [partial, Symbol("default-value-undefined")];
+            const hasDefaultValue = defaultValue !== Symbol("default-value-undefined") ? true : false;
+            const requestHasValue = props && Object.keys(props).includes(propName);
+            console.log({ defaultValue });
+            if (hasDefaultValue || requestHasValue) {
+                return requestHasValue ? props[propName] : defaultValue;
+            }
+            else {
+                throw new ConfiguredRequestError(`Attempt to build URL failed because there was no default value for "${propName}" nor was this passed into the request!`, "url-dynamics-invalid");
+            }
+        })
             .join("");
         const headers = Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), this._headers), this.getDynamics(DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)
             ? "none"
             : this._bodyType;
-        const body = bodyToString(this._body, bodyType);
+        const templateBody = this._body || {};
+        const requestBody = props && props.body ? props.body : {};
+        const payload = Object.assign(Object.assign({}, templateBody), requestBody);
+        const body = bodyToString(payload, bodyType);
         const [mockConfig, axiosOptions] = extract(Object.assign(Object.assign({}, this._designOptions), runTimeOptions), [
             "mock",
             "networkDelay",
@@ -174,12 +196,14 @@ export class ConfiguredRequest {
         return {
             props: props,
             method: this._method,
-            url: queryParameters
+            url: hasQueryParameters
                 ? url + "?" + queryString.stringify(queryParameters)
                 : url,
             headers,
             queryParameters,
-            payload: this._body,
+            payload: isLiteralType(payload)
+                ? payload
+                : payload,
             bodyType,
             body,
             mockConfig,
