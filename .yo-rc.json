@@ -1,0 +1,14 @@
+{
+  "generator-typescript-microservice": {
+    "promptValues": {
+      "appName": "configured-request",
+      "serverless": "library-function",
+      "features": [
+        "wallaby"
+      ],
+      "license": "MIT",
+      "coverage": [],
+      "social": []
+    }
+  }
+}

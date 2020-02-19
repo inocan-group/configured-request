@@ -1,0 +1,81 @@
+{
+  "name": "configured-request",
+  "version": "0.1.0",
+  "description": "configured-request",
+  "license": "MIT",
+  "repository": "https://your-server.com/inocan-group/configured-request",
+  "author": "Ken Snyder <ken@ken.net>",
+  "keywords": [
+    "serverless",
+    "typescript"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "lib/index.js",
+  "module": "dist/esnext/index.js",
+  "browser": "dist/cjs/index.js",
+  "typings": "dist/esnext/index.d.ts",
+  "scripts": {
+    "clean": "rimraf lib",
+    "lint": "tslint --force --format verbose \"src/**/*.ts\"",
+    "build": "tsc -P tsconfig-esnext.json && tsc -P tsconfig-cjs.json",
+    "test": "do test ",
+    "invoke": "do invoke ",
+    "deploy": "do deploy ",
+    "package": "do package ",
+    "help": "yarn do --help",
+    "coverage": "nyc --reporter=html _mocha --require ts-node/register 'test/**/*-spec.ts' && open coverage/index.html",
+    "coverage:coveralls": "nyc --reporter=text-lcov _mocha --require ts-node/register 'test/**/*-spec.ts' | coveralls",
+    "coverage:codecov": "nyc _mocha --reporter=json --require ts-node/register 'test/**/*-spec.ts' > coverage/coverage.json",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "@types/aws-sdk": "^2.7.0",
+    "@types/chai": "^4.2.9",
+    "@types/handlebars": "^4.1.0",
+    "@types/inquirer": "^6.5.0",
+    "@types/js-yaml": "^3.12.2",
+    "@types/lodash": "^4.14.149",
+    "@types/lodash.get": "^4.4.6",
+    "@types/lodash.set": "^4.3.6",
+    "@types/mocha": "^7.0.1",
+    "@types/node": "^10.14.15",
+    "@types/query-string": "^6.3.0",
+    "@types/rimraf": "^2.0.3",
+    "@types/webpack-node-externals": "^1.7.1",
+    "async-shelljs": "^0.1.4",
+    "bili": "^4.8.1",
+    "chai": "^4.2.0",
+    "chalk": "^3.0.0",
+    "do-devops": "^0.3.5",
+    "fast-glob": "^3.1.1",
+    "inquirer": "^7.0.4",
+    "js-yaml": "^3.13.1",
+    "lodash.first": "^3.0.0",
+    "lodash.last": "^3.0.0",
+    "mocha": "^7.0.1",
+    "prettier": "^1.19.1",
+    "rimraf": "^3.0.2",
+    "simple-git": "^1.131.0",
+    "test-console": "^1.1.0",
+    "ts-loader": "^6.2.1",
+    "ts-node": "^8.6.2",
+    "tslint": "^6.0.0",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^3.7.5",
+    "webpack": "^4.41.6",
+    "webpack-cli": "^3.3.11",
+    "webpack-node-externals": "^1.7.2"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "common-types": "^1.13.0",
+    "lodash.get": "^4.4.2",
+    "lodash.set": "^4.3.2",
+    "query-string": "^6.11.0"
+  }
+}
