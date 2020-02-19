@@ -1,6 +1,6 @@
 {
   "name": "configured-request",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "configured-request",
   "license": "MIT",
   "repository": "https://your-server.com/inocan-group/configured-request",
@@ -19,7 +19,7 @@
   "scripts": {
     "clean": "rimraf lib",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
-    "build": "tsc -P tsconfig-esnext.json && tsc -P tsconfig-cjs.json",
+    "build": "rimraf dist && tsc -P tsconfig-esnext.json && tsc -P tsconfig-cjs.json",
     "test": "do test ",
     "invoke": "do invoke ",
     "deploy": "do deploy ",
