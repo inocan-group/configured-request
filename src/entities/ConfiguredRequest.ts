@@ -8,14 +8,14 @@ import {
   DynamicStateLocation,
   IDynamicProperty,
   IRequestMethod,
-  IEndpointMock,
+  IApiMock,
   Scalar
-} from "./index";
-import { RequestError } from "./ConfiguredRequestError";
+} from "../index";
+import { RequestError } from "../errors/ConfiguredRequestError";
 import * as queryString from "query-string";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IRequestInfo, IApiBodyType } from "./cr-types";
+import { IRequestInfo, IApiBodyType } from "../cr-types";
 
 export const DEFAULT_HEADERS: IDictionary<string> = {
   "User-Agent":
@@ -60,7 +60,7 @@ export class ConfiguredRequest<
   private _url: string;
   private _body?: string;
   private _bodyType: IApiBodyType = "none";
-  private _mockFn?: IEndpointMock<I, O>;
+  private _mockFn?: IApiMock<I, O>;
   private _mapping: (input: X) => O;
   /**
    * The various _dynamic_ aspects of the API call
@@ -113,7 +113,7 @@ export class ConfiguredRequest<
   //#endregion
 
   /** add a mock function for this API endpoint */
-  async mock(fn: IEndpointMock<I, O>) {
+  async mock(fn: IApiMock<I, O>) {
     this._mockFn = fn;
     return this;
   }
@@ -189,16 +189,23 @@ export class ConfiguredRequest<
    */
   async request(props?: I, runTimeOptions: IDictionary = {}) {
     const { url, headers } = this.requestInfo(props);
+    const body = bodyToString(this._body, this._bodyType);
 
     let result: AxiosResponse<O>;
     const options = { ...this._designOptions, ...runTimeOptions, headers };
     const isMockRequest = this.isMockRequest(options);
+    const request = {
+      props,
+      url,
+      headers,
+      body
+    };
 
     // MOCK or NETWORK REQUEST
     if (isMockRequest) {
-      result = await this.mockRequest(options);
+      result = await this.mockRequest(request, options);
     } else {
-      result = await this.makeRequest(this._body, url, options);
+      result = await this.makeRequest(request, options);
     }
 
     // THROW on ERROR
@@ -324,10 +331,13 @@ export class ConfiguredRequest<
    * @param url The URL including query parameters
    * @param options Mock options
    */
-  private async mockRequest(options: IDictionary): Promise<AxiosResponse<O>> {
+  private async mockRequest(
+    request: I,
+    options: IDictionary
+  ): Promise<AxiosResponse<O>> {
     // TODO: Implement
     return {
-      data: this._mockFn ? (this._mockFn(this) as O) : ({} as O),
+      data: this._mockFn ? (this._mockFn(request, this) as O) : ({} as O),
       status: HttpStatusCodes.NotImplemented,
       statusText: "Not Implemented",
       headers: {},

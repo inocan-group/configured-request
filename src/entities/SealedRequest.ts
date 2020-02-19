@@ -1,6 +1,6 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
 import { IDictionary } from "common-types";
-import { IRequestInfo } from "./cr-types";
+import { IRequestInfo } from "../cr-types";
 
 export class SealedRequest<I, O> {
   constructor(private req: ConfiguredRequest<I, O>) {}

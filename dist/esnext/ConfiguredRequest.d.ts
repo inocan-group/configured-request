@@ -1,5 +1,5 @@
 import { IDictionary, url, IHttpRequestHeaders } from "common-types";
-import { IEndpointMock } from "./index";
+import { IApiMock } from "./index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IRequestInfo } from "./cr-types";
@@ -50,7 +50,7 @@ X extends IDictionary = IDictionary> {
     static put<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
     static delete<I extends IDictionary = IDictionary, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
     /** add a mock function for this API endpoint */
-    mock(fn: IEndpointMock<I, O>): Promise<this>;
+    mock(fn: IApiMock<I, O>): Promise<this>;
     isMockRequest(options?: IDictionary & {
         mock?: boolean;
     }): string | boolean;

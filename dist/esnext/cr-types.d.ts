@@ -39,24 +39,26 @@ export interface IDatedScrape<T> {
     data: T;
 }
 /** A function that sends back a mocked response to a given endpoint */
-export interface IEndpointMock<I, O> {
-    (request: ConfiguredRequest<I, O>, scenario?: IEndpointMockScenario): O;
+export interface IApiMock<I, O> {
+    (request: I, config: ConfiguredRequest<I, O>): O;
 }
+export declare enum ApiBodyType {
+    JSON = "JSON",
+    formFields = "formFields",
+    literal = "literal",
+    none = "none"
+}
+export declare type IApiBodyType = keyof typeof ApiBodyType;
+export declare type PropertyName = string;
 /**
- * When mocking an API endpoint, there
- * are various scenarios that you might
- * want to mock for.
+ * A tuple with the property's name as the first element, the value
+ * as the second element.
  */
-export declare enum EndpointMockScenario {
-    /**
-     * An normal response which assumes we are on the
-     * happy path. This is the default type and if a
-     * endpoint only returns a single function then it will
-     * be assumed to be for this path.
-     */
-    happyPath = "happyPath",
-    authFailure = "authFailure",
-    apiFailure = "apiFailure"
-}
-export declare type IEndpointMockScenario = keyof typeof EndpointMockScenario;
-export declare type IApiBodyType = "none" | "literal" | "form-fields" | "JSON";
+export declare type NamedValuePair = [PropertyName, Scalar];
+/**
+ * a function used in the `dynamic` helper to resolve either:
+ *
+ * 1. The value of a dynamic property
+ * 2. The key and value of a dynamic property
+ */
+export declare type DynamicFunction<I> = (request: I) => Scalar | NamedValuePair;

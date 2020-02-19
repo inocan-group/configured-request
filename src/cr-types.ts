@@ -1,5 +1,5 @@
-import { IDictionary, datetime, seconds } from "common-types";
-import { ConfiguredRequest } from "./ConfiguredRequest";
+import { IDictionary, datetime, seconds, HttpStatusCodes } from "common-types";
+import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 
 export interface IRequestInfo {
   method: IRequestMethod;
@@ -51,27 +51,31 @@ export interface IDatedScrape<T> {
 }
 
 /** A function that sends back a mocked response to a given endpoint */
-export interface IEndpointMock<I, O> {
-  (request: ConfiguredRequest<I, O>, scenario?: IEndpointMockScenario): O;
+export interface IApiMock<I, O> {
+  (request: I, config: ConfiguredRequest<I, O>): O;
 }
+
+export enum ApiBodyType {
+  JSON = "JSON",
+  formFields = "formFields",
+  literal = "literal",
+  none = "none"
+}
+
+export type IApiBodyType = keyof typeof ApiBodyType;
+
+export type PropertyName = string;
 
 /**
- * When mocking an API endpoint, there
- * are various scenarios that you might
- * want to mock for.
+ * A tuple with the property's name as the first element, the value
+ * as the second element.
  */
-export enum EndpointMockScenario {
-  /**
-   * An normal response which assumes we are on the
-   * happy path. This is the default type and if a
-   * endpoint only returns a single function then it will
-   * be assumed to be for this path.
-   */
-  happyPath = "happyPath",
-  authFailure = "authFailure",
-  apiFailure = "apiFailure"
-}
+export type NamedValuePair = [PropertyName, Scalar];
 
-export type IEndpointMockScenario = keyof typeof EndpointMockScenario;
-
-export type IApiBodyType = "none" | "literal" | "form-fields" | "JSON";
+/**
+ * a function used in the `dynamic` helper to resolve either:
+ *
+ * 1. The value of a dynamic property
+ * 2. The key and value of a dynamic property
+ */
+export type DynamicFunction<I> = (request: I) => Scalar | NamedValuePair;
