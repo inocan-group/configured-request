@@ -1,14 +1,13 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IDictionary } from "common-types";
-import { IRequestInfo } from "../cr-types";
+import { IRequestInfo, IAllRequestOptions, IApiInput } from "../cr-types";
 
-export class SealedRequest<I, O> {
+export class SealedRequest<I extends IApiInput, O> {
   constructor(private req: ConfiguredRequest<I, O>) {}
 
   /**
    * Make a request to the configured API endpoint
    */
-  async request(props?: I, options: IDictionary = {}) {
+  async request(props?: I, options: IAllRequestOptions = {}) {
     return this.req.request(props, options);
   }
 
@@ -16,7 +15,10 @@ export class SealedRequest<I, O> {
    * Get information about the API request structure, given
    * the passed in dynamic props
    */
-  requestInfo(props?: Partial<I>): IRequestInfo {
+  requestInfo(
+    props?: Partial<I>,
+    options: IAllRequestOptions = {}
+  ): IRequestInfo {
     return this.req.requestInfo(props);
   }
 

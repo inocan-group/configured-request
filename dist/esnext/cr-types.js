@@ -1,11 +1,11 @@
-export var RequestMethod;
-(function (RequestMethod) {
-    RequestMethod["get"] = "get";
-    RequestMethod["post"] = "post";
-    RequestMethod["put"] = "put";
-    RequestMethod["delete"] = "delete";
-    RequestMethod["patch"] = "patch";
-})(RequestMethod || (RequestMethod = {}));
+export var RequestVerb;
+(function (RequestVerb) {
+    RequestVerb["get"] = "get";
+    RequestVerb["post"] = "post";
+    RequestVerb["put"] = "put";
+    RequestVerb["delete"] = "delete";
+    RequestVerb["patch"] = "patch";
+})(RequestVerb || (RequestVerb = {}));
 export var DynamicStateLocation;
 (function (DynamicStateLocation) {
     DynamicStateLocation["url"] = "url";
@@ -24,3 +24,4 @@ export var ApiBodyType;
     ApiBodyType["literal"] = "literal";
     ApiBodyType["none"] = "none";
 })(ApiBodyType || (ApiBodyType = {}));
+export const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";

@@ -1,4 +1,5 @@
-export const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
+import { LITERAL_TYPE } from "../cr-types";
+
 export function literal(value: string) {
   return { type: LITERAL_TYPE, value };
 }

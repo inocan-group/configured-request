@@ -1,8 +1,9 @@
 import { IDictionary } from "common-types";
-import { IApiBodyType } from "../cr-types";
+import { IApiBodyType, ILiteralType } from "../cr-types";
+import { ConfiguredRequestError } from "../errors";
 
 export function bodyToString<I extends object & { body: IDictionary }>(
-  body: I["body"],
+  body: I["body"] | ILiteralType,
   bodyType: IApiBodyType
 ) {
   switch (bodyType) {
@@ -20,4 +21,11 @@ export function bodyToString<I extends object & { body: IDictionary }>(
         "invalid-body-type"
       );
   }
+}
+
+function ff(body: IDictionary): string {
+  return Object.keys(body).reduce((formFields: string, key: string) => {
+    formFields += `${key}:"${body[key]}"\n`;
+    return formFields;
+  }, "");
 }
