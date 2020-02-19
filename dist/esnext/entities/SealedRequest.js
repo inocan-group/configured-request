@@ -13,7 +13,7 @@ export class SealedRequest {
      * the passed in dynamic props
      */
     requestInfo(props, options = {}) {
-        return this.req.requestInfo(props);
+        return this.req.requestInfo(props, options);
     }
     toString() {
         return this.req.toString();

@@ -15,11 +15,8 @@ export class SealedRequest<I extends IApiInput, O> {
    * Get information about the API request structure, given
    * the passed in dynamic props
    */
-  requestInfo(
-    props?: Partial<I>,
-    options: IAllRequestOptions = {}
-  ): IRequestInfo {
-    return this.req.requestInfo(props);
+  requestInfo(props?: Partial<I>, options: IAllRequestOptions = {}) {
+    return this.req.requestInfo(props, options);
   }
 
   toString() {

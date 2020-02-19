@@ -58,14 +58,16 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
     body: undefined | string;
     bodyType: IApiBodyType;
     axiosOptions: AxiosRequestConfig;
-    options: IRequestOptions;
+    mockConfig: IMockOptions;
 }
-export interface IRequestOptions {
+export interface IMockOptions {
     mock?: boolean;
     networkDelay?: INetworkDelaySetting;
+    authWhitelist?: string[];
+    authBlacklist?: string[];
 }
 export declare type INetworkDelaySetting = "light" | "medium" | "heavy" | "very-heavy";
-export declare type IAllRequestOptions = IRequestOptions & AxiosRequestConfig;
+export declare type IAllRequestOptions = IMockOptions & AxiosRequestConfig;
 export declare const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
 export interface ILiteralType {
     type: "LITERAL_BODY_PAYLOAD";
@@ -75,6 +77,6 @@ export interface IApiInputWithBody extends IDictionary {
     body: IDictionary<Scalar>;
 }
 export interface IApiInputWithoutBody extends IDictionary {
-    body: undefined;
+    body?: undefined;
 }
 export declare type IApiInput = IApiInputWithBody | IApiInputWithoutBody;

@@ -101,18 +101,20 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
     /**
      * Options -- such as mocking -- which are _not_ related to Axios
      */
-    options: IRequestOptions;
+    mockConfig: IMockOptions;
 }
 /**
  * The request options which are _not_ going to be
  * passed to the Axios request.
  */
-export interface IRequestOptions {
+export interface IMockOptions {
     mock?: boolean;
     networkDelay?: INetworkDelaySetting;
+    authWhitelist?: string[];
+    authBlacklist?: string[];
 }
 export declare type INetworkDelaySetting = "light" | "medium" | "heavy" | "very-heavy";
-export declare type IAllRequestOptions = IRequestOptions & AxiosRequestConfig;
+export declare type IAllRequestOptions = IMockOptions & AxiosRequestConfig;
 export declare const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
 export interface ILiteralType {
     type: "LITERAL_BODY_PAYLOAD";
@@ -122,6 +124,6 @@ export interface IApiInputWithBody extends IDictionary {
     body: IDictionary<Scalar>;
 }
 export interface IApiInputWithoutBody extends IDictionary {
-    body: undefined;
+    body?: undefined;
 }
 export declare type IApiInput = IApiInputWithBody | IApiInputWithoutBody;

@@ -8,7 +8,7 @@ class SealedRequest {
         return this.req.request(props, options);
     }
     requestInfo(props, options = {}) {
-        return this.req.requestInfo(props);
+        return this.req.requestInfo(props, options);
     }
     toString() {
         return this.req.toString();

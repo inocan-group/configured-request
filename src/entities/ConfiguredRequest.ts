@@ -23,8 +23,9 @@ import {
   IApiBodyType,
   ILiteralType,
   IAllRequestOptions,
-  IRequestOptions,
-  IApiInput
+  IMockOptions,
+  IApiInput,
+  isLiteralType
 } from "../cr-types";
 import { extract } from "../shared/extract";
 
@@ -70,7 +71,7 @@ export class ConfiguredRequest<
   private _designOptions: IDictionary = {};
   private _url: string;
   private _body?: I["body"] | ILiteralType;
-  private _bodyType: IApiBodyType = "none";
+  private _bodyType: IApiBodyType = "JSON";
   private _mockFn?: IApiMock<I, O>;
   private _mapping: (input: X) => O;
   /**
@@ -132,8 +133,8 @@ export class ConfiguredRequest<
   isMockRequest(options: IDictionary & { mock?: boolean } = {}) {
     return (
       options.mock ||
-      process.env["VUE_APP_MOCK_REQUEST"] ||
-      process.env["MOCK_REQUEST"] ||
+      process.env["MOCK_API"] ||
+      process.env["VUE_APP_MOCK_API"] ||
       false
     );
   }
@@ -200,7 +201,7 @@ export class ConfiguredRequest<
    */
   async request(props?: I, runTimeOptions: IAllRequestOptions = {}) {
     const request = this.requestInfo(props, runTimeOptions);
-    const isMockRequest = this.isMockRequest(request.options);
+    const isMockRequest = this.isMockRequest(request.mockConfig);
     const axiosOptions = { headers: request.headers, ...request.axiosOptions };
     let result: AxiosResponse<O>;
 
@@ -250,10 +251,33 @@ export class ConfiguredRequest<
       ...this.getDynamics(DynamicStateLocation.queryParameter, props),
       ...this._qp
     };
+    const hasQueryParameters =
+      Object.keys(queryParameters).length > 0 ? true : false;
 
     const url = this._url
       .split("{")
-      .map(i => i.replace(/(.*})/, ""))
+      .map((urlPart, idx) => {
+        if (idx === 0) {
+          return urlPart;
+        }
+        const partial = urlPart.replace(/}.*/, "");
+        const [propName, defaultValue] = partial.includes(":")
+          ? partial.split(":")
+          : [partial, Symbol("default-value-undefined")];
+        const hasDefaultValue =
+          defaultValue !== Symbol("default-value-undefined") ? true : false;
+        const requestHasValue = props && Object.keys(props).includes(propName);
+        console.log({ defaultValue });
+
+        if (hasDefaultValue || requestHasValue) {
+          return requestHasValue ? props[propName] : defaultValue;
+        } else {
+          throw new ConfiguredRequestError(
+            `Attempt to build URL failed because there was no default value for "${propName}" nor was this passed into the request!`,
+            "url-dynamics-invalid"
+          );
+        }
+      })
       .join("");
 
     const headers = {
@@ -266,25 +290,35 @@ export class ConfiguredRequest<
       ? "none"
       : this._bodyType;
 
-    const body = bodyToString(this._body, bodyType);
+    const templateBody = this._body || {};
+    const requestBody = props && props.body ? props.body : {};
+    const payload = { ...templateBody, ...requestBody };
+    const body = bodyToString(payload, bodyType);
 
-    const [options, axiosOptions] = extract<
-      IRequestOptions,
+    const [mockConfig, axiosOptions] = extract<
+      IMockOptions,
       AxiosRequestConfig
-    >({ ...this._designOptions, ...runTimeOptions }, ["mock", "networkDelay"]);
+    >({ ...this._designOptions, ...runTimeOptions }, [
+      "mock",
+      "networkDelay",
+      "authWhiteList",
+      "authBlacklist"
+    ]);
 
     return {
       props: props as I,
       method: this._method,
-      url: queryParameters
+      url: hasQueryParameters
         ? url + "?" + queryString.stringify(queryParameters)
         : url,
       headers,
       queryParameters,
-      payload: this._body,
+      payload: isLiteralType(payload)
+        ? (payload as ILiteralType)
+        : (payload as I["body"]),
       bodyType,
       body,
-      options,
+      mockConfig,
       axiosOptions
     };
   }

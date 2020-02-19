@@ -68,8 +68,8 @@ export class ConfiguredRequest {
     }
     isMockRequest(options = {}) {
         return (options.mock ||
-            process.env["VUE_APP_MOCK_REQUEST"] ||
-            process.env["MOCK_REQUEST"] ||
+            process.env["MOCK_API"] ||
+            process.env["VUE_APP_MOCK_API"] ||
             false);
     }
     headers(headers) {
@@ -122,7 +122,7 @@ export class ConfiguredRequest {
      */
     async request(props, runTimeOptions = {}) {
         const request = this.requestInfo(props, runTimeOptions);
-        const isMockRequest = this.isMockRequest(request.options);
+        const isMockRequest = this.isMockRequest(request.mockConfig);
         const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
         let result;
         // MOCK or NETWORK REQUEST
@@ -165,7 +165,12 @@ export class ConfiguredRequest {
             ? "none"
             : this._bodyType;
         const body = bodyToString(this._body, bodyType);
-        const [options, axiosOptions] = extract(Object.assign(Object.assign({}, this._designOptions), runTimeOptions), ["mock", "networkDelay"]);
+        const [mockConfig, axiosOptions] = extract(Object.assign(Object.assign({}, this._designOptions), runTimeOptions), [
+            "mock",
+            "networkDelay",
+            "authWhiteList",
+            "authBlacklist"
+        ]);
         return {
             props: props,
             method: this._method,
@@ -177,7 +182,7 @@ export class ConfiguredRequest {
             payload: this._body,
             bodyType,
             body,
-            options,
+            mockConfig,
             axiosOptions
         };
     }
