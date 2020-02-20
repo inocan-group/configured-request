@@ -145,20 +145,22 @@ export class ConfiguredRequest<
       (process.env.MOCK_API_NETWORK_DELAY as INetworkDelaySetting) ||
       "light";
     // auth whitelist
-    if (ConfiguredRequest.authWhitelist)
+    if (ConfiguredRequest.authWhitelist) {
       this._mockConfig.authWhitelist = ConfiguredRequest.authWhitelist;
-    else if (process.env.MOCK_API_AUTH_WHITELIST)
+    } else if (process.env.MOCK_API_AUTH_WHITELIST) {
       this._mockConfig.authWhitelist = process.env.MOCK_API_AUTH_WHITELIST.split(
         ","
       ) as string[];
+    }
 
     // auth blacklist
-    if (ConfiguredRequest.authBlacklist)
+    if (ConfiguredRequest.authBlacklist) {
       this._mockConfig.authBlacklist = ConfiguredRequest.authBlacklist;
-    else if (process.env.MOCK_API_AUTH_BLACKLIST)
+    } else if (process.env.MOCK_API_AUTH_BLACKLIST) {
       this._mockConfig.authBlacklist = process.env.MOCK_API_AUTH_BLACKLIST.split(
         ","
       ) as string[];
+    }
   }
 
   /**
