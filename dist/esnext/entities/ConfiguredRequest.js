@@ -1,11 +1,13 @@
-import { HttpStatusCodes } from "common-types";
-import { DynamicStateLocation, bodyToString } from "../index";
+import { HttpStatusCodes, wait } from "common-types";
+import { DynamicStateLocation, isDynamicProp } from "../index";
+import { calculationUpdate, bodyToString, fakeAxios, between } from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { isLiteralType } from "../cr-types";
+import { DynamicSymbol, isCalculator } from "../cr-types";
 import { extract } from "../shared/extract";
+import { dynamicUpdate } from "../shared";
 export const DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
     "Accept-Encoding": "gzip, deflate, br",
@@ -26,15 +28,40 @@ export const DEFAULT_HEADERS = {
  ```
  */
 export class ConfiguredRequest {
+    //#endregion
     constructor() {
         this._qp = {};
         this._headers = {};
         this._designOptions = {};
         this._bodyType = "JSON";
+        this._mockConfig = {};
         /**
          * The various _dynamic_ aspects of the API call
          */
         this._dynamics = [];
+        /**
+         * Properties which have calculations associated
+         */
+        this._calculations = [];
+        // network delay settings
+        this._mockConfig.networkDelay =
+            ConfiguredRequest.networkDelay ||
+                process.env.MOCK_API_NETWORK_DELAY ||
+                "light";
+        // auth whitelist
+        if (ConfiguredRequest.authWhitelist) {
+            this._mockConfig.authWhitelist = ConfiguredRequest.authWhitelist;
+        }
+        else if (process.env.MOCK_API_AUTH_WHITELIST) {
+            this._mockConfig.authWhitelist = process.env.MOCK_API_AUTH_WHITELIST.split(",");
+        }
+        // auth blacklist
+        if (ConfiguredRequest.authBlacklist) {
+            this._mockConfig.authBlacklist = ConfiguredRequest.authBlacklist;
+        }
+        else if (process.env.MOCK_API_AUTH_BLACKLIST) {
+            this._mockConfig.authBlacklist = process.env.MOCK_API_AUTH_BLACKLIST.split(",");
+        }
     }
     //#region static initializers
     static get(url) {
@@ -61,25 +88,29 @@ export class ConfiguredRequest {
         obj.setUrl(url);
         return obj;
     }
-    //#endregion
-    /** add a mock function for this API endpoint */
-    async mock(fn) {
+    /**
+     * Add a mock function for this API endpoint.
+     *
+     * When this API requests from the mock it will pass the
+     * props (aka, `I`) as well as a config object as a second
+     * parameter which everything you should need to
+     */
+    mockFn(fn) {
         this._mockFn = fn;
         return this;
     }
     isMockRequest(options = {}) {
         return (options.mock ||
+            this._mockConfig.mock ||
             process.env["MOCK_API"] ||
             process.env["VUE_APP_MOCK_API"] ||
             false);
     }
     headers(headers) {
-        const [staticProps, dynamic] = this.parseParameters(headers);
+        const [staticProps, dynamics, calculations] = this.parseParameters(headers);
         this._headers = staticProps;
-        const d = dynamic.map(i => (Object.assign(Object.assign({}, i), { type: DynamicStateLocation.header })));
-        this._dynamics = this._dynamics
-            .filter(i => i.type !== DynamicStateLocation.header)
-            .concat(...d);
+        this._dynamics = dynamicUpdate(this._dynamics, DynamicStateLocation.header, dynamics);
+        this._calculations = calculationUpdate(this._calculations, DynamicStateLocation.header, calculations);
         return this;
     }
     /**
@@ -94,12 +125,10 @@ export class ConfiguredRequest {
      * or _dynamic_ parameters (using the `dynamic` symbol export)
      */
     queryParameters(qp) {
-        const [staticProps, dynamic] = this.parseParameters(qp);
+        const [staticProps, dynamics, calculations] = this.parseParameters(qp);
         this._qp = staticProps;
-        const d = dynamic.map(i => (Object.assign(Object.assign({}, i), { type: DynamicStateLocation.queryParameter })));
-        this._dynamics = this._dynamics
-            .filter(i => i.type !== DynamicStateLocation.queryParameter)
-            .concat(...d);
+        this._dynamics = dynamicUpdate(this._dynamics, DynamicStateLocation.queryParameter, dynamics);
+        this._calculations = calculationUpdate(this._calculations, DynamicStateLocation.queryParameter, calculations);
         return this;
     }
     /**
@@ -156,7 +185,7 @@ export class ConfiguredRequest {
      * but _does not_ send it.
      */
     requestInfo(props, runTimeOptions = {}) {
-        const queryParameters = Object.assign(Object.assign({}, this.getDynamics(DynamicStateLocation.queryParameter, props)), this._qp);
+        let queryParameters = Object.assign(Object.assign({}, this.getDynamics(DynamicStateLocation.queryParameter, props)), this._qp);
         const hasQueryParameters = Object.keys(queryParameters).length > 0 ? true : false;
         const url = this._url
             .split("{")
@@ -167,19 +196,21 @@ export class ConfiguredRequest {
             const partial = urlPart.replace(/}.*/, "");
             const [propName, defaultValue] = partial.includes(":")
                 ? partial.split(":")
-                : [partial, Symbol("default-value-undefined")];
-            const hasDefaultValue = defaultValue !== Symbol("default-value-undefined") ? true : false;
-            const requestHasValue = props && Object.keys(props).includes(propName);
-            console.log({ defaultValue });
-            if (hasDefaultValue || requestHasValue) {
-                return requestHasValue ? props[propName] : defaultValue;
+                : [partial, "default-value-undefined"];
+            const hasDefaultValue = defaultValue !== "default-value-undefined" ? true : false;
+            const requestHasValue = props && Object.keys(props).includes(propName) ? true : false;
+            if (requestHasValue) {
+                return props[propName];
+            }
+            else if (hasDefaultValue) {
+                return defaultValue;
             }
             else {
                 throw new ConfiguredRequestError(`Attempt to build URL failed because there was no default value for "${propName}" nor was this passed into the request!`, "url-dynamics-invalid");
             }
         })
             .join("");
-        const headers = Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), this._headers), this.getDynamics(DynamicStateLocation.header, props));
+        let headers = Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), this._headers), this.getDynamics(DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)
             ? "none"
             : this._bodyType;
@@ -187,13 +218,13 @@ export class ConfiguredRequest {
         const requestBody = props && props.body ? props.body : {};
         const payload = Object.assign(Object.assign({}, templateBody), requestBody);
         const body = bodyToString(payload, bodyType);
-        const [mockConfig, axiosOptions] = extract(Object.assign(Object.assign({}, this._designOptions), runTimeOptions), [
+        const [mockConfig, axiosOptions] = extract(Object.assign(Object.assign(Object.assign({}, this._mockConfig), this._designOptions), runTimeOptions), [
             "mock",
             "networkDelay",
             "authWhiteList",
             "authBlacklist"
         ]);
-        return {
+        const apiRequest = {
             props: props,
             method: this._method,
             url: hasQueryParameters
@@ -201,14 +232,14 @@ export class ConfiguredRequest {
                 : url,
             headers,
             queryParameters,
-            payload: isLiteralType(payload)
-                ? payload
-                : payload,
+            payload: payload,
             bodyType,
             body,
             mockConfig,
             axiosOptions
         };
+        this.runCalculations(apiRequest);
+        return apiRequest;
     }
     /**
      * Seals the configuration of the API endpoint and returns
@@ -226,20 +257,29 @@ export class ConfiguredRequest {
         return {
             method: this._method,
             url: this._url,
-            requiredParameters: this._dynamics.filter(d => d.required).length > 0
-                ? this._dynamics.filter(d => d.required).map(i => i.prop)
-                : "none",
-            optionalParameters: this._dynamics.filter(d => !d.required).length > 0
-                ? this._dynamics.filter(d => !d.required).map(i => i.prop)
-                : "none"
+            calculators: this._calculations.map(i => i.prop),
+            requiredParameters: this._dynamics.filter(d => d.symbol === DynamicSymbol.dynamic && d.required).length > 0
+                ? this._dynamics
+                    .filter(d => d.symbol === DynamicSymbol.dynamic && d.required)
+                    .map(i => i.prop)
+                : null,
+            optionalParameters: this._dynamics.filter(d => d.symbol === DynamicSymbol.dynamic && !d.required).length > 0
+                ? this._dynamics
+                    .filter(d => d.symbol === DynamicSymbol.dynamic && !d.required)
+                    .map(i => i.prop)
+                : null
         };
     }
+    /**
+     * Pulls the dynamic segments from the URL string and adds them to
+     * the `_dynamics` array.
+     */
     setUrl(url) {
         this._url = url;
         if (url.includes("{")) {
             // Dynamic properties present
             const parts = url.split("{");
-            this._dynamics = this._dynamics.filter(d => d.type !== DynamicStateLocation.url);
+            this._dynamics = this._dynamics.filter(d => d.location !== DynamicStateLocation.url);
             parts.slice(1).forEach(part => {
                 const endDelimiter = part.indexOf("}");
                 if (endDelimiter === -1) {
@@ -247,9 +287,10 @@ export class ConfiguredRequest {
                 }
                 const dynamicProp = part.slice(0, endDelimiter);
                 this._dynamics = this._dynamics.concat({
+                    symbol: DynamicSymbol.dynamic,
                     prop: dynamicProp,
                     required: true,
-                    type: DynamicStateLocation.url,
+                    location: DynamicStateLocation.url,
                     defaultValue: undefined
                 });
             });
@@ -264,14 +305,17 @@ export class ConfiguredRequest {
      * @param options Mock options
      */
     async mockRequest(request, options) {
-        // TODO: Implement
-        return {
-            data: this._mockFn ? this._mockFn(request) : {},
-            status: HttpStatusCodes.NotImplemented,
-            statusText: "Not Implemented",
-            headers: {},
-            config: {}
-        };
+        if (!this._mockFn) {
+            throw new ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", HttpStatusCodes.NotImplemented);
+        }
+        try {
+            const response = this._mockFn(request.props, request);
+            await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
+            return fakeAxios(response, request);
+        }
+        catch (e) {
+            throw new ConfiguredRequestError(e.message || `Problem running the mock API request to ${request.url}`, "invalid-mock-call", e.httpStatusCode || HttpStatusCodes.BadRequest);
+        }
     }
     /**
      * Sends a request to an endpoint using the Axios library
@@ -296,35 +340,86 @@ export class ConfiguredRequest {
         }
     }
     /**
-     * Gets the dynamic properties as known at the given time; if none provided
+     * Gets the _dynamic_ properties for a given location (aka, headers, query params).
+     * If a dynamic property is not
      * as part of the optional `request` parameter then only dynamics with default
      * values or those which are _required_ will be shown (those required will
      * be returned with a value of REQUIRED).
      */
-    getDynamics(type, request = {}) {
-        const dynamics = this._dynamics.filter(i => i.type === type);
+    getDynamics(location, request = {}) {
+        const dynamics = this._dynamics.filter(i => i.location === location);
         let dynamicsHash = {};
+        // iterate over each dynamic property
         dynamics.forEach(d => {
-            const { prop, required, defaultValue } = d;
-            if (required || request[prop]) {
-                dynamicsHash[prop] =
-                    request[prop] !== undefined ? request[prop] : "REQUIRED";
+            const { required, prop, defaultValue } = d;
+            const hasValueFromInput = Object.getOwnPropertyNames(request).includes(prop);
+            if (hasValueFromInput) {
+                dynamicsHash[prop] = request[prop];
+            }
+            else if (defaultValue !== undefined) {
+                dynamicsHash[prop] = defaultValue;
+            }
+            else if (required) {
+                dynamicsHash[prop] = "REQUIRED!";
             }
         });
         return dynamicsHash;
     }
+    runCalculations(apiRequest) {
+        const [{ props: request }, config] = extract(apiRequest, ["props"]);
+        this._calculations.forEach(calc => {
+            const value = calc.fn(request, config);
+            if (calc.location === "queryParameter") {
+                apiRequest.queryParameters[calc.prop] = value;
+            }
+            else if (calc.location === DynamicStateLocation.header) {
+                apiRequest.headers[calc.prop] = value;
+            }
+        });
+        return [apiRequest.headers, apiRequest.queryParameters];
+    }
+    /**
+     * Separates static properties from dynamic; "dynamic" properties
+     * are those produced by a functional symbol export like `dynamic`
+     * or `calc`.
+     */
     parseParameters(hash) {
+        // gather the static props
         let staticProps = {};
         Object.keys(hash)
             .filter(i => typeof hash[i] !== "function")
             .forEach(i => (staticProps[i] = hash[i]));
+        // gather the dynamic props
         const dynamic = [];
+        const calculations = [];
         Object.keys(hash)
             .filter(i => typeof hash[i] === "function")
             .forEach(i => {
-            const { required, defaultValue } = hash[i](i);
-            dynamic.push({ prop: i, required, defaultValue });
+            // pass in the property name into the dynamic symbol
+            const config = hash[i](i);
+            if (isCalculator(config)) {
+                calculations.push(config);
+            }
+            else if (isDynamicProp(config)) {
+                dynamic.push(config);
+            }
+            else {
+                console.warn(`detected a dynamic property of an unknown type`, {
+                    config
+                });
+            }
         });
-        return [staticProps, dynamic];
+        return [staticProps, dynamic, calculations];
+    }
+    async mockNetworkDelay(delay) {
+        const lookup = {
+            light: [10, 50],
+            medium: [50, 150],
+            heavy: [150, 500],
+            "very-heavy": [1000, 2000]
+        };
+        const range = lookup[delay];
+        await wait(between(range[0], range[1]));
     }
 }
+ConfiguredRequest.networkDelay = "light";

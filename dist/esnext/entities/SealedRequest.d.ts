@@ -8,6 +8,13 @@ export declare class SealedRequest<I extends IApiInput, O> {
      */
     request(props?: I, options?: IAllRequestOptions): Promise<O>;
     /**
+     * Make a request to the **Mock** API.
+     *
+     * Note: if there is no mock function configured for this
+     * API then this will throw a `mock-not-ready` error.
+     */
+    mock(props?: I, options?: IAllRequestOptions): Promise<O>;
+    /**
      * Get information about the API request structure, given
      * the passed in dynamic props
      */
@@ -16,7 +23,8 @@ export declare class SealedRequest<I extends IApiInput, O> {
     toJSON(): {
         method: "get" | "put" | "post" | "delete" | "patch";
         url: string;
-        requiredParameters: string | string[];
-        optionalParameters: string | string[];
+        calculators: (string & keyof I)[];
+        requiredParameters: (string & keyof O)[];
+        optionalParameters: (string & keyof O)[];
     };
 }

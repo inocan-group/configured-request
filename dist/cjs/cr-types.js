@@ -31,3 +31,16 @@ function isLiteralType(body) {
     return body.type === exports.LITERAL_TYPE ? true : false;
 }
 exports.isLiteralType = isLiteralType;
+var DynamicSymbol;
+(function (DynamicSymbol) {
+    DynamicSymbol["dynamic"] = "dynamic";
+    DynamicSymbol["calc"] = "calc";
+})(DynamicSymbol = exports.DynamicSymbol || (exports.DynamicSymbol = {}));
+function isCalculator(dp) {
+    return dp.symbol === DynamicSymbol.calc ? true : false;
+}
+exports.isCalculator = isCalculator;
+function isDynamicProp(dp) {
+    return dp.symbol === DynamicSymbol.dynamic ? true : false;
+}
+exports.isDynamicProp = isDynamicProp;

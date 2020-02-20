@@ -151,7 +151,7 @@ When a dynamic URL property has a default value it is considered _optional_ and 
 While the URL defines dynamic properties with curly brackets, both _headers_ and _query-parameters_ leverage the `dynamic` export from this repo. We've already seen examples of this but here we'll detail out the capabilities of this helpful utility. The basic structure of **dynamic** is:
 
 ```typescript
-dynamic<I,O>(defaultValue: undefined | Scalar | DynamicFunction<O>, required: boolean = false)
+dynamic<I,O>(defaultValue: undefined | Scalar, required: boolean = false)
 ```
 
 So in the many cases the main thing you're stating with dynamic is that a given property is available as a dynamic property. The property _isn't_ required and it might or might now have a default value. Examples of this include:
@@ -161,21 +161,25 @@ So in the many cases the main thing you're stating with dynamic is that a given 
 API.queryParameters({ limit: dynamic(10), offset: dynamic(0) });
 // not required, no default value
 API.headers({ Store: dynamic() });
+// required prop but no default
+API.queryParameters({ userId: dynamic(undefined, true) });
 ```
 
-You can of course, make a property _required_ by setting the second property to `true`. That's pretty pretty straightforward so we'll skip the example. What is distinct though is when we use `dynamic()` with a `DynamicFunction`. A dynamic function is defined as:
+### The `calc` symbol
 
-```typescript
-export type NamedValuePair = [PropertyName, Scalar];
-export type DynamicFunction<I> = (request: I) => Scalar | NamedValuePair;
-```
+The `calc` symbol plays a similar but distinct role to the `dynamic` symbol. Whereas the `dynamic` symbol allows stating that a given property is dynamic (and optionally what it's default value is), the `calc` symbol _calculates_ the value of a dynamic property. For the basis of this calculation, the _calc_ symbol accepts a callback function which is passed two properties:
+
+- `request` - this dictionary of properties that a consumer passes in when making a request
+- `config` - a dictionary of useful details about the request, including the payload, queryParameters, etc.
 
 To see this used in context, here is an example:
 
 ```typescript
 API.headers({
-  ...dynamic(req => ["Authorization", `Bearer ${req.token}`], true),
-  Store: dynamic(req => req.store)
+  Authorization: calc(req => `Bearer ${req.token}`),
+  Page: calc((req, config) =>
+    Math.floor(req.queryParameters.offset / req.queryParameters.limit)
+  )
 });
 ```
 

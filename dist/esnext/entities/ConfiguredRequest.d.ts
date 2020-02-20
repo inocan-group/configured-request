@@ -1,8 +1,8 @@
-import { IDictionary, url, IHttpRequestHeaders } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody } from "../index";
+import { IDictionary, url } from "common-types";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IAllRequestOptions, IApiInput } from "../cr-types";
+import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
 /**
  * **Request**
@@ -26,35 +26,50 @@ I extends IApiInput,
 /**
  * The **output** of the API Endpoint
  */
-O extends IDictionary = IDictionary, 
+O extends IApiOutput = IApiOutput, 
 /**
  * if you are doing a transform before returning <O> you can state a preliminary type that comes back
  * from the API directly
  */
-X extends IDictionary = IDictionary> {
+X extends IApiIntermediate = IApiIntermediate> {
+    static authWhitelist: string[];
+    static authBlacklist: string[];
+    static networkDelay: INetworkDelaySetting;
     private _qp;
     private _headers;
     private _designOptions;
     private _url;
     private _body?;
     private _bodyType;
+    private _mockConfig;
     private _mockFn?;
     private _mapping;
     /**
      * The various _dynamic_ aspects of the API call
      */
     private _dynamics;
+    /**
+     * Properties which have calculations associated
+     */
+    private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    /** add a mock function for this API endpoint */
-    mock(fn: IApiMock<I, O>): Promise<this>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    constructor();
+    /**
+     * Add a mock function for this API endpoint.
+     *
+     * When this API requests from the mock it will pass the
+     * props (aka, `I`) as well as a config object as a second
+     * parameter which everything you should need to
+     */
+    mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IDictionary & {
         mock?: boolean;
     }): string | boolean;
-    headers(headers: IHttpRequestHeaders | IDictionary<string | number | boolean>): this;
+    headers(headers: IDictionary<string | number | boolean | Function>): this;
     /**
      * **Query Parameters**
      *
@@ -105,9 +120,14 @@ X extends IDictionary = IDictionary> {
     toJSON(): {
         method: "get" | "put" | "post" | "delete" | "patch";
         url: string;
-        requiredParameters: string | string[];
-        optionalParameters: string | string[];
+        calculators: (string & keyof I)[];
+        requiredParameters: (string & keyof O)[];
+        optionalParameters: (string & keyof O)[];
     };
+    /**
+     * Pulls the dynamic segments from the URL string and adds them to
+     * the `_dynamics` array.
+     */
     protected setUrl(url: url): this;
     /**
      * Mocks a request to an endpoint
@@ -126,11 +146,19 @@ X extends IDictionary = IDictionary> {
      */
     private makeRequest;
     /**
-     * Gets the dynamic properties as known at the given time; if none provided
+     * Gets the _dynamic_ properties for a given location (aka, headers, query params).
+     * If a dynamic property is not
      * as part of the optional `request` parameter then only dynamics with default
      * values or those which are _required_ will be shown (those required will
      * be returned with a value of REQUIRED).
      */
     private getDynamics;
+    private runCalculations;
+    /**
+     * Separates static properties from dynamic; "dynamic" properties
+     * are those produced by a functional symbol export like `dynamic`
+     * or `calc`.
+     */
     private parseParameters;
+    private mockNetworkDelay;
 }

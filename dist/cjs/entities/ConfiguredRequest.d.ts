@@ -1,29 +1,35 @@
-import { IDictionary, url, IHttpRequestHeaders } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody } from "../index";
+import { IDictionary, url } from "common-types";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IAllRequestOptions, IApiInput } from "../cr-types";
+import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
-export declare class ConfiguredRequest<I extends IApiInput, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary> {
+export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate> {
+    static authWhitelist: string[];
+    static authBlacklist: string[];
+    static networkDelay: INetworkDelaySetting;
     private _qp;
     private _headers;
     private _designOptions;
     private _url;
     private _body?;
     private _bodyType;
+    private _mockConfig;
     private _mockFn?;
     private _mapping;
     private _dynamics;
+    private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IDictionary = IDictionary, X extends IDictionary = IDictionary>(url: string): ConfiguredRequest<I, O, X>;
-    mock(fn: IApiMock<I, O>): Promise<this>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    constructor();
+    mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IDictionary & {
         mock?: boolean;
     }): string | boolean;
-    headers(headers: IHttpRequestHeaders | IDictionary<string | number | boolean>): this;
+    headers(headers: IDictionary<string | number | boolean | Function>): this;
     queryParameters(qp: IDictionary): this;
     mapper(fn: (input: X) => O): this;
     request(props?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
@@ -34,12 +40,15 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IDictionar
     toJSON(): {
         method: "get" | "put" | "post" | "delete" | "patch";
         url: string;
-        requiredParameters: string | string[];
-        optionalParameters: string | string[];
+        calculators: (string & keyof I)[];
+        requiredParameters: (string & keyof O)[];
+        optionalParameters: (string & keyof O)[];
     };
     protected setUrl(url: url): this;
     private mockRequest;
     private makeRequest;
     private getDynamics;
+    private runCalculations;
     private parseParameters;
+    private mockNetworkDelay;
 }

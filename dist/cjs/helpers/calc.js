@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-function dynamic(defaultValue = undefined, required = false) {
+const cr_types_1 = require("../cr-types");
+function calc(fn) {
     return (prop) => {
         return {
+            symbol: cr_types_1.DynamicSymbol.calc,
             prop,
-            required,
-            defaultValue
+            fn
         };
     };
 }
-exports.dynamic = dynamic;
+exports.calc = calc;

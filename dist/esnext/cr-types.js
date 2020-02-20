@@ -28,3 +28,20 @@ export const LITERAL_TYPE = "LITERAL_BODY_PAYLOAD";
 export function isLiteralType(body) {
     return body.type === LITERAL_TYPE ? true : false;
 }
+export var DynamicSymbol;
+(function (DynamicSymbol) {
+    DynamicSymbol["dynamic"] = "dynamic";
+    DynamicSymbol["calc"] = "calc";
+})(DynamicSymbol || (DynamicSymbol = {}));
+/**
+ * Tests whether the given symbol is a `calc` property
+ */
+export function isCalculator(dp) {
+    return dp.symbol === DynamicSymbol.calc ? true : false;
+}
+/**
+ * Tests whether the given symbol is a `dynamic` property
+ */
+export function isDynamicProp(dp) {
+    return dp.symbol === DynamicSymbol.dynamic ? true : false;
+}
