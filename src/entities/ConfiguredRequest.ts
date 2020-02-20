@@ -34,7 +34,6 @@ import { dynamicUpdate } from "../shared";
 export const DEFAULT_HEADERS: IDictionary<string> = {
   "User-Agent":
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
-  "Accept-Encoding": "gzip, deflate, br",
   "Cache-Control": "no-cache",
   Connection: "keep-alive"
 };
