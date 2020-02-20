@@ -13,7 +13,6 @@ describe("CALC tests", () => {
       customerId: string;
     }
 
-    // const bearerToken = ;
     const body = { name: "Ken" };
     const bearer = (req: IRequest) => `Bearer ${req.token}`;
 

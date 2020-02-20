@@ -55,7 +55,7 @@ Once, defined you will export a symbol for your consumers like so:
 ```typescript
 import { ConfiguredRequest, dynamic } from 'configured-request';
 
-export ProductList = ConfiguredRequest
+export const ProductList = ConfiguredRequest
   .get<IProductRequest, IProductResponse>('https://api.fictional-store.com/{version:v1}/products')
   .queryParameters({
     limit: dynamic(50, false)
