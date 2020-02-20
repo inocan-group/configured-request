@@ -1,9 +1,4 @@
-import {
-  IDictionary,
-  url,
-  IHttpRequestHeaders,
-  HttpStatusCodes
-} from "common-types";
+import { IDictionary, url, HttpStatusCodes, wait } from "common-types";
 import {
   DynamicStateLocation,
   IDynamicProperty,
@@ -11,23 +6,30 @@ import {
   IApiMock,
   Scalar,
   IConfiguredApiRequest,
-  bodyToString,
   IApiInputWithBody,
-  IApiInputWithoutBody
+  IApiInputWithoutBody,
+  isDynamicProp,
+  IApiOutput,
+  IApiIntermediate,
+  IDynamicSymbolOutput
 } from "../index";
+import { calculationUpdate, bodyToString, fakeAxios, between } from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import {
   IApiBodyType,
-  ILiteralType,
   IAllRequestOptions,
   IMockOptions,
   IApiInput,
-  isLiteralType
+  DynamicSymbol,
+  isCalculator,
+  ICalcSymbolOutput,
+  INetworkDelaySetting
 } from "../cr-types";
 import { extract } from "../shared/extract";
+import { dynamicUpdate } from "../shared";
 
 export const DEFAULT_HEADERS: IDictionary<string> = {
   "User-Agent":
@@ -59,33 +61,45 @@ export class ConfiguredRequest<
   /**
    * The **output** of the API Endpoint
    */
-  O extends IDictionary = IDictionary,
+  O extends IApiOutput = IApiOutput,
   /**
    * if you are doing a transform before returning <O> you can state a preliminary type that comes back
    * from the API directly
    */
-  X extends IDictionary = IDictionary
+  X extends IApiIntermediate = IApiIntermediate
 > {
+  // Static props which serve as defaults for new instances
+  public static authWhitelist: string[];
+  public static authBlacklist: string[];
+  public static networkDelay: INetworkDelaySetting = "light";
+
   private _qp: IDictionary = {};
   private _headers: IDictionary = {};
   private _designOptions: IDictionary = {};
   private _url: string;
-  private _body?: I["body"] | ILiteralType;
+  private _body?: I["body"];
   private _bodyType: IApiBodyType = "JSON";
+  private _mockConfig: IMockOptions = {};
   private _mockFn?: IApiMock<I, O>;
   private _mapping: (input: X) => O;
   /**
    * The various _dynamic_ aspects of the API call
    */
   private _dynamics: Array<
-    IDynamicProperty & { type: DynamicStateLocation }
+    IDynamicSymbolOutput<any, O> & { location: DynamicStateLocation }
+  > = [];
+  /**
+   * Properties which have calculations associated
+   */
+  private _calculations: Array<
+    ICalcSymbolOutput<I, O> & { location: DynamicStateLocation }
   > = [];
   private _method: IRequestVerb;
   //#region static initializers
   static get<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
-    O extends IDictionary = IDictionary,
-    X extends IDictionary = IDictionary
+    O extends IApiOutput = IApiOutput,
+    X extends IApiIntermediate = IApiIntermediate
   >(url: string) {
     const obj = new ConfiguredRequest<I, O, X>();
     obj._method = "get";
@@ -94,8 +108,8 @@ export class ConfiguredRequest<
   }
   static post<
     I extends IApiInputWithBody = IApiInputWithBody,
-    O extends IDictionary = IDictionary,
-    X extends IDictionary = IDictionary
+    O extends IApiOutput = IApiOutput,
+    X extends IApiIntermediate = IApiIntermediate
   >(url: string) {
     const obj = new ConfiguredRequest<I, O, X>();
     obj._method = "post";
@@ -104,8 +118,8 @@ export class ConfiguredRequest<
   }
   static put<
     I extends IApiInputWithBody = IApiInputWithBody,
-    O extends IDictionary = IDictionary,
-    X extends IDictionary = IDictionary
+    O extends IApiOutput = IApiOutput,
+    X extends IApiIntermediate = IApiIntermediate
   >(url: string) {
     const obj = new ConfiguredRequest<I, O, X>();
     obj._method = "put";
@@ -114,8 +128,8 @@ export class ConfiguredRequest<
   }
   static delete<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
-    O extends IDictionary = IDictionary,
-    X extends IDictionary = IDictionary
+    O extends IApiOutput = IApiOutput,
+    X extends IApiIntermediate = IApiIntermediate
   >(url: string) {
     const obj = new ConfiguredRequest<I, O, X>();
     obj._method = "delete";
@@ -124,8 +138,37 @@ export class ConfiguredRequest<
   }
   //#endregion
 
-  /** add a mock function for this API endpoint */
-  async mock(fn: IApiMock<I, O>) {
+  constructor() {
+    // network delay settings
+    this._mockConfig.networkDelay =
+      ConfiguredRequest.networkDelay ||
+      (process.env.MOCK_API_NETWORK_DELAY as INetworkDelaySetting) ||
+      "light";
+    // auth whitelist
+    if (ConfiguredRequest.authWhitelist)
+      this._mockConfig.authWhitelist = ConfiguredRequest.authWhitelist;
+    else if (process.env.MOCK_API_AUTH_WHITELIST)
+      this._mockConfig.authWhitelist = process.env.MOCK_API_AUTH_WHITELIST.split(
+        ","
+      ) as string[];
+
+    // auth blacklist
+    if (ConfiguredRequest.authBlacklist)
+      this._mockConfig.authBlacklist = ConfiguredRequest.authBlacklist;
+    else if (process.env.MOCK_API_AUTH_BLACKLIST)
+      this._mockConfig.authBlacklist = process.env.MOCK_API_AUTH_BLACKLIST.split(
+        ","
+      ) as string[];
+  }
+
+  /**
+   * Add a mock function for this API endpoint.
+   *
+   * When this API requests from the mock it will pass the
+   * props (aka, `I`) as well as a config object as a second
+   * parameter which everything you should need to
+   */
+  mockFn(fn: IApiMock<I, O>) {
     this._mockFn = fn;
     return this;
   }
@@ -133,24 +176,29 @@ export class ConfiguredRequest<
   isMockRequest(options: IDictionary & { mock?: boolean } = {}) {
     return (
       options.mock ||
+      this._mockConfig.mock ||
       process.env["MOCK_API"] ||
       process.env["VUE_APP_MOCK_API"] ||
       false
     );
   }
 
-  headers(
-    headers: IHttpRequestHeaders | IDictionary<string | number | boolean>
-  ) {
-    const [staticProps, dynamic] = this.parseParameters(headers);
+  headers(headers: IDictionary<string | number | boolean | Function>) {
+    const [staticProps, dynamics, calculations] = this.parseParameters(headers);
     this._headers = staticProps;
-    const d = dynamic.map(i => ({
-      ...i,
-      type: DynamicStateLocation.header
-    }));
-    this._dynamics = this._dynamics
-      .filter(i => i.type !== DynamicStateLocation.header)
-      .concat(...d);
+
+    this._dynamics = dynamicUpdate<I, O>(
+      this._dynamics,
+      DynamicStateLocation.header,
+      dynamics
+    );
+
+    this._calculations = calculationUpdate<I, O>(
+      this._calculations,
+      DynamicStateLocation.header,
+      calculations
+    );
+
     return this;
   }
 
@@ -166,15 +214,20 @@ export class ConfiguredRequest<
    * or _dynamic_ parameters (using the `dynamic` symbol export)
    */
   queryParameters(qp: IDictionary) {
-    const [staticProps, dynamic] = this.parseParameters(qp);
+    const [staticProps, dynamics, calculations] = this.parseParameters(qp);
     this._qp = staticProps;
-    const d = dynamic.map(i => ({
-      ...i,
-      type: DynamicStateLocation.queryParameter
-    }));
-    this._dynamics = this._dynamics
-      .filter(i => i.type !== DynamicStateLocation.queryParameter)
-      .concat(...d);
+
+    this._dynamics = dynamicUpdate<I, O>(
+      this._dynamics,
+      DynamicStateLocation.queryParameter,
+      dynamics
+    );
+
+    this._calculations = calculationUpdate<I, O>(
+      this._calculations,
+      DynamicStateLocation.queryParameter,
+      calculations
+    );
     return this;
   }
 
@@ -247,7 +300,7 @@ export class ConfiguredRequest<
     props?: Partial<I>,
     runTimeOptions: IAllRequestOptions = {}
   ): IConfiguredApiRequest<I> {
-    const queryParameters: IDictionary<Scalar> = {
+    let queryParameters: IDictionary<Scalar> = {
       ...this.getDynamics(DynamicStateLocation.queryParameter, props),
       ...this._qp
     };
@@ -263,14 +316,16 @@ export class ConfiguredRequest<
         const partial = urlPart.replace(/}.*/, "");
         const [propName, defaultValue] = partial.includes(":")
           ? partial.split(":")
-          : [partial, Symbol("default-value-undefined")];
+          : [partial, "default-value-undefined"];
         const hasDefaultValue =
-          defaultValue !== Symbol("default-value-undefined") ? true : false;
-        const requestHasValue = props && Object.keys(props).includes(propName);
-        console.log({ defaultValue });
+          defaultValue !== "default-value-undefined" ? true : false;
+        const requestHasValue =
+          props && Object.keys(props).includes(propName) ? true : false;
 
-        if (hasDefaultValue || requestHasValue) {
-          return requestHasValue ? props[propName] : defaultValue;
+        if (requestHasValue) {
+          return props[propName];
+        } else if (hasDefaultValue) {
+          return defaultValue;
         } else {
           throw new ConfiguredRequestError(
             `Attempt to build URL failed because there was no default value for "${propName}" nor was this passed into the request!`,
@@ -280,7 +335,7 @@ export class ConfiguredRequest<
       })
       .join("");
 
-    const headers = {
+    let headers = {
       ...DEFAULT_HEADERS,
       ...this._headers,
       ...this.getDynamics(DynamicStateLocation.header, props)
@@ -298,14 +353,14 @@ export class ConfiguredRequest<
     const [mockConfig, axiosOptions] = extract<
       IMockOptions,
       AxiosRequestConfig
-    >({ ...this._designOptions, ...runTimeOptions }, [
+    >({ ...this._mockConfig, ...this._designOptions, ...runTimeOptions }, [
       "mock",
       "networkDelay",
       "authWhiteList",
       "authBlacklist"
     ]);
 
-    return {
+    const apiRequest = {
       props: props as I,
       method: this._method,
       url: hasQueryParameters
@@ -313,14 +368,16 @@ export class ConfiguredRequest<
         : url,
       headers,
       queryParameters,
-      payload: isLiteralType(payload)
-        ? (payload as ILiteralType)
-        : (payload as I["body"]),
+      payload: payload as I["body"],
       bodyType,
       body,
       mockConfig,
       axiosOptions
     };
+
+    this.runCalculations(apiRequest);
+
+    return apiRequest;
   }
 
   /**
@@ -341,24 +398,37 @@ export class ConfiguredRequest<
     return {
       method: this._method,
       url: this._url,
+      calculators: this._calculations.map(i => i.prop),
       requiredParameters:
-        this._dynamics.filter(d => d.required).length > 0
-          ? this._dynamics.filter(d => d.required).map(i => i.prop)
-          : "none",
+        this._dynamics.filter(
+          d => d.symbol === DynamicSymbol.dynamic && d.required
+        ).length > 0
+          ? this._dynamics
+              .filter(d => d.symbol === DynamicSymbol.dynamic && d.required)
+              .map(i => i.prop)
+          : null,
       optionalParameters:
-        this._dynamics.filter(d => !d.required).length > 0
-          ? this._dynamics.filter(d => !d.required).map(i => i.prop)
-          : "none"
+        this._dynamics.filter(
+          d => d.symbol === DynamicSymbol.dynamic && !d.required
+        ).length > 0
+          ? this._dynamics
+              .filter(d => d.symbol === DynamicSymbol.dynamic && !d.required)
+              .map(i => i.prop)
+          : null
     };
   }
 
+  /**
+   * Pulls the dynamic segments from the URL string and adds them to
+   * the `_dynamics` array.
+   */
   protected setUrl(url: url) {
     this._url = url;
     if (url.includes("{")) {
       // Dynamic properties present
       const parts = url.split("{");
       this._dynamics = this._dynamics.filter(
-        d => d.type !== DynamicStateLocation.url
+        d => d.location !== DynamicStateLocation.url
       );
       parts.slice(1).forEach(part => {
         const endDelimiter = part.indexOf("}");
@@ -369,10 +439,12 @@ export class ConfiguredRequest<
           );
         }
         const dynamicProp = part.slice(0, endDelimiter);
+
         this._dynamics = this._dynamics.concat({
+          symbol: DynamicSymbol.dynamic,
           prop: dynamicProp,
           required: true,
-          type: DynamicStateLocation.url,
+          location: DynamicStateLocation.url,
           defaultValue: undefined
         });
       });
@@ -392,14 +464,27 @@ export class ConfiguredRequest<
     request: IConfiguredApiRequest<I>,
     options: AxiosRequestConfig
   ): Promise<AxiosResponse<O>> {
-    // TODO: Implement
-    return {
-      data: this._mockFn ? (this._mockFn(request) as O) : ({} as O),
-      status: HttpStatusCodes.NotImplemented,
-      statusText: "Not Implemented",
-      headers: {},
-      config: {}
-    };
+    if (!this._mockFn) {
+      throw new ConfiguredRequestError(
+        `The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`,
+        "mock-not-ready",
+        HttpStatusCodes.NotImplemented
+      );
+    }
+
+    try {
+      const response = this._mockFn(request.props, request);
+      await this.mockNetworkDelay(
+        request.mockConfig.networkDelay || this._mockConfig.networkDelay
+      );
+      return fakeAxios(response, request);
+    } catch (e) {
+      throw new ConfiguredRequestError(
+        e.message || `Problem running the mock API request to ${request.url}`,
+        "invalid-mock-call",
+        e.httpStatusCode || HttpStatusCodes.BadRequest
+      );
+    }
   }
 
   /**
@@ -429,41 +514,103 @@ export class ConfiguredRequest<
   }
 
   /**
-   * Gets the dynamic properties as known at the given time; if none provided
+   * Gets the _dynamic_ properties for a given location (aka, headers, query params).
+   * If a dynamic property is not
    * as part of the optional `request` parameter then only dynamics with default
    * values or those which are _required_ will be shown (those required will
    * be returned with a value of REQUIRED).
    */
-  private getDynamics(type: DynamicStateLocation, request: IDictionary = {}) {
-    const dynamics = this._dynamics.filter(i => i.type === type);
+  private getDynamics(
+    location: DynamicStateLocation,
+    request: Partial<I> = {}
+  ) {
+    const dynamics = this._dynamics.filter(i => i.location === location);
     let dynamicsHash: IDictionary = {};
+    // iterate over each dynamic property
     dynamics.forEach(d => {
-      const { prop, required, defaultValue } = d;
-      if (required || request[prop]) {
-        dynamicsHash[prop] =
-          request[prop] !== undefined ? request[prop] : "REQUIRED";
+      const { required, prop, defaultValue } = d;
+      const hasValueFromInput = Object.getOwnPropertyNames(request).includes(
+        prop
+      );
+
+      if (hasValueFromInput) {
+        dynamicsHash[prop] = request[prop];
+      } else if (defaultValue !== undefined) {
+        dynamicsHash[prop] = defaultValue;
+      } else if (required) {
+        dynamicsHash[prop] = "REQUIRED!";
       }
     });
 
     return dynamicsHash;
   }
 
+  private runCalculations(apiRequest: IConfiguredApiRequest<I>) {
+    const [{ props: request }, config] = extract<
+      I,
+      Omit<IConfiguredApiRequest<I>, "props">,
+      IConfiguredApiRequest<I>
+    >(apiRequest, ["props"]);
+    this._calculations.forEach(calc => {
+      const value = calc.fn(request, config);
+      if (calc.location === "queryParameter") {
+        apiRequest.queryParameters[calc.prop] = value;
+      } else if (calc.location === DynamicStateLocation.header) {
+        apiRequest.headers[calc.prop] = value;
+      }
+    });
+    return [apiRequest.headers, apiRequest.queryParameters];
+  }
+
+  /**
+   * Separates static properties from dynamic; "dynamic" properties
+   * are those produced by a functional symbol export like `dynamic`
+   * or `calc`.
+   */
   private parseParameters(
     hash: IDictionary
-  ): [IDictionary<Scalar>, IDynamicProperty[]] {
+  ): [
+    IDictionary<Scalar>,
+    IDynamicSymbolOutput<any, O>[],
+    ICalcSymbolOutput<I, O>[]
+  ] {
+    // gather the static props
     let staticProps: IDictionary<Scalar> = {};
     Object.keys(hash)
       .filter(i => typeof hash[i] !== "function")
       .forEach(i => (staticProps[i] = hash[i]));
 
-    const dynamic: IDynamicProperty[] = [];
+    // gather the dynamic props
+    const dynamic: IDynamicSymbolOutput<any, O>[] = [];
+    const calculations: ICalcSymbolOutput<I, O>[] = [];
     Object.keys(hash)
       .filter(i => typeof hash[i] === "function")
       .forEach(i => {
-        const { required, defaultValue } = hash[i](i);
-        dynamic.push({ prop: i, required, defaultValue });
+        // pass in the property name into the dynamic symbol
+        const config: IDynamicProperty<I, O> = hash[i](i);
+
+        if (isCalculator(config)) {
+          calculations.push(config);
+        } else if (isDynamicProp(config)) {
+          dynamic.push(config);
+        } else {
+          console.warn(`detected a dynamic property of an unknown type`, {
+            config
+          });
+        }
       });
 
-    return [staticProps, dynamic];
+    return [staticProps, dynamic, calculations];
+  }
+
+  private async mockNetworkDelay(delay: INetworkDelaySetting) {
+    const lookup = {
+      light: [10, 50],
+      medium: [50, 150],
+      heavy: [150, 500],
+      "very-heavy": [1000, 2000]
+    };
+    const range = lookup[delay as keyof typeof lookup];
+    await wait(between(range[0], range[1]));
   }
 }
