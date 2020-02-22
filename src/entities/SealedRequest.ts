@@ -14,7 +14,7 @@ export class SealedRequest<I extends IApiInput, O> {
    */
   async request(props?: I, options: IAllRequestOptions = {}) {
     const response = this.req.request(props, options);
-    this.req.errorHandler(undefined); // reset error handler
+    this.req.errorHandler(undefined); // reset error
     return response;
   }
 

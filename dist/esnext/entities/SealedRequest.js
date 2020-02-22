@@ -7,7 +7,7 @@ export class SealedRequest {
      */
     async request(props, options = {}) {
         const response = this.req.request(props, options);
-        this.req.errorHandler(undefined); // reset error handler
+        this.req.errorHandler(undefined); // reset error
         return response;
     }
     /**
