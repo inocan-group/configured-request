@@ -179,6 +179,9 @@ export class ConfiguredRequest {
                     throw e;
                 result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
             }
+            else {
+                throw e;
+            }
         }
         // OPTIONALLY MAP, ALWAYS RETURN
         return this._mapping

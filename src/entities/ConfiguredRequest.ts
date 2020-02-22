@@ -285,6 +285,8 @@ export class ConfiguredRequest<
         if (handlerOutcome === false) throw e;
 
         result = { ...e, data: handlerOutcome };
+      } else {
+        throw e;
       }
     }
 

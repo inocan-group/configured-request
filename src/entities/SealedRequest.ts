@@ -13,7 +13,7 @@ export class SealedRequest<I extends IApiInput, O> {
    * Make a request to the configured API endpoint
    */
   async request(props?: I, options: IAllRequestOptions = {}) {
-    const response = this.req.request(props, options);
+    const response = await this.req.request(props, options);
     this.req.errorHandler(undefined); // reset error
     return response;
   }
