@@ -158,6 +158,7 @@ export class ConfiguredRequest {
      * with any options which were included in `_designOptions`.
      */
     async request(props, runTimeOptions = {}) {
+        var _a, _b;
         const request = this.requestInfo(props, runTimeOptions);
         const isMockRequest = this.isMockRequest(request.mockConfig);
         const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
@@ -181,8 +182,8 @@ export class ConfiguredRequest {
         }
         // OPTIONALLY MAP, ALWAYS RETURN
         return this._mapping
-            ? this._mapping(result.data)
-            : result.data;
+            ? this._mapping((_a = result) === null || _a === void 0 ? void 0 : _a.data)
+            : (_b = result) === null || _b === void 0 ? void 0 : _b.data;
     }
     /**
      * If there are Axios request options which you which to pass along for every request

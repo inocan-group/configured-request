@@ -109,6 +109,7 @@ class ConfiguredRequest {
         return this;
     }
     async request(props, runTimeOptions = {}) {
+        var _a, _b;
         const request = this.requestInfo(props, runTimeOptions);
         const isMockRequest = this.isMockRequest(request.mockConfig);
         const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
@@ -130,8 +131,8 @@ class ConfiguredRequest {
             }
         }
         return this._mapping
-            ? this._mapping(result.data)
-            : result.data;
+            ? this._mapping((_a = result) === null || _a === void 0 ? void 0 : _a.data)
+            : (_b = result) === null || _b === void 0 ? void 0 : _b.data;
     }
     options(opts) {
         this._designOptions = opts;
