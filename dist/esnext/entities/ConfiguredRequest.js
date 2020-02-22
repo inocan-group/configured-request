@@ -179,10 +179,6 @@ export class ConfiguredRequest {
                 result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
             }
         }
-        // THROW on ERROR
-        if (result.status >= 300) {
-            throw new ConfiguredRequestError(`The API endpoint [ ${this._method.toUpperCase()} ${request.url} ] failed with a ${result.status} / ${result.statusText}} error code.`, String(result.status), result.status);
-        }
         // OPTIONALLY MAP, ALWAYS RETURN
         return this._mapping
             ? this._mapping(result.data)
