@@ -11,7 +11,8 @@ import {
   isDynamicProp,
   IApiOutput,
   IApiIntermediate,
-  IDynamicSymbolOutput
+  IDynamicSymbolOutput,
+  IErrorHandler
 } from "../index";
 import { calculationUpdate, bodyToString, fakeAxios, between } from "../shared";
 import { ConfiguredRequestError } from "../errors";
@@ -81,6 +82,7 @@ export class ConfiguredRequest<
   private _mockConfig: IMockOptions = {};
   private _mockFn?: IApiMock<I, O>;
   private _mapping: (input: X) => O;
+  private _errorHandler: IErrorHandler;
   /**
    * The various _dynamic_ aspects of the API call
    */
@@ -204,6 +206,16 @@ export class ConfiguredRequest<
   }
 
   /**
+   * If you want to pass in an error handler function in you can determine which
+   * errors should be handled (return of boolean flag).
+   */
+  errorHandler(fn: IErrorHandler) {
+    this._errorHandler = fn;
+
+    return this;
+  }
+
+  /**
    * **Query Parameters**
    *
    * States the query parameters that this API endpoint uses. In the case of
@@ -260,10 +272,20 @@ export class ConfiguredRequest<
     let result: AxiosResponse<O>;
 
     // MOCK or NETWORK REQUEST
-    if (isMockRequest) {
-      result = await this.mockRequest(request, axiosOptions);
-    } else {
-      result = await this.makeRequest(request, axiosOptions);
+    try {
+      if (isMockRequest) {
+        result = await this.mockRequest(request, axiosOptions);
+      } else {
+        result = await this.makeRequest(request, axiosOptions);
+      }
+    } catch (e) {
+      if (this._errorHandler) {
+        const handlerOutcome = this._errorHandler(e);
+
+        if (handlerOutcome === false) throw e;
+
+        result = { ...e, data: handlerOutcome };
+      }
     }
 
     // THROW on ERROR

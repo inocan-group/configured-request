@@ -113,6 +113,14 @@ export class ConfiguredRequest {
         return this;
     }
     /**
+     * If you want to pass in an error handler function in you can determine which
+     * errors should be handled (return of boolean flag).
+     */
+    errorHandler(fn) {
+        this._errorHandler = fn;
+        return this;
+    }
+    /**
      * **Query Parameters**
      *
      * States the query parameters that this API endpoint uses. In the case of
@@ -155,11 +163,21 @@ export class ConfiguredRequest {
         const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
         let result;
         // MOCK or NETWORK REQUEST
-        if (isMockRequest) {
-            result = await this.mockRequest(request, axiosOptions);
+        try {
+            if (isMockRequest) {
+                result = await this.mockRequest(request, axiosOptions);
+            }
+            else {
+                result = await this.makeRequest(request, axiosOptions);
+            }
         }
-        else {
-            result = await this.makeRequest(request, axiosOptions);
+        catch (e) {
+            if (this._errorHandler) {
+                const handlerOutcome = this._errorHandler(e);
+                if (handlerOutcome === false)
+                    throw e;
+                result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
+            }
         }
         // THROW on ERROR
         if (result.status >= 300) {

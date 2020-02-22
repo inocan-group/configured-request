@@ -1,5 +1,5 @@
 import { IDictionary, url } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate } from "../index";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
@@ -17,6 +17,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     private _mockConfig;
     private _mockFn?;
     private _mapping;
+    private _errorHandler;
     private _dynamics;
     private _calculations;
     private _method;
@@ -30,6 +31,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
         mock?: boolean;
     }): string | boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
+    errorHandler(fn: IErrorHandler): this;
     queryParameters(qp: IDictionary): this;
     mapper(fn: (input: X) => O): this;
     request(props?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;

@@ -1,5 +1,5 @@
 import { IDictionary, datetime, seconds } from "common-types";
-import { AxiosRequestConfig } from "axios";
+import { AxiosRequestConfig, AxiosError } from "axios";
 export interface IRequestInfo {
     method: IRequestVerb;
     headers: IDictionary<Scalar>;
@@ -108,3 +108,6 @@ export declare type IDynamicProperty<I extends IApiInput, O extends IApiOutput, 
 export declare type KnownLocation<T> = T & {
     location: DynamicStateLocation;
 };
+export interface IErrorHandler {
+    (fn: AxiosError): false | any;
+}

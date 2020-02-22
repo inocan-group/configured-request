@@ -1,5 +1,5 @@
 import { IDictionary, datetime, seconds } from "common-types";
-import { AxiosRequestConfig } from "axios";
+import { AxiosRequestConfig, AxiosError } from "axios";
 export interface IRequestInfo {
     method: IRequestVerb;
     headers: IDictionary<Scalar>;
@@ -175,3 +175,12 @@ export declare type IDynamicProperty<I extends IApiInput, O extends IApiOutput, 
 export declare type KnownLocation<T> = T & {
     location: DynamicStateLocation;
 };
+/**
+ * An error handler for Axios requests. If an error is encountered it will
+ * pass the error to the handler. If the handler returns a `false` it will
+ * also throw an error but any other value will be passed along as the response's
+ * `data` property.
+ */
+export interface IErrorHandler {
+    (fn: AxiosError): false | any;
+}
