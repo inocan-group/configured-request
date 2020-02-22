@@ -290,8 +290,8 @@ export class ConfiguredRequest<
 
     // OPTIONALLY MAP, ALWAYS RETURN
     return this._mapping
-      ? this._mapping((result.data as unknown) as X)
-      : result.data;
+      ? this._mapping((result?.data as unknown) as X)
+      : result?.data;
   }
 
   /**
