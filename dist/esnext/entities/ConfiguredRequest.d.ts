@@ -1,5 +1,5 @@
 import { IDictionary, url } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate } from "../index";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
@@ -44,6 +44,7 @@ X extends IApiIntermediate = IApiIntermediate> {
     private _mockConfig;
     private _mockFn?;
     private _mapping;
+    private _errorHandler;
     /**
      * The various _dynamic_ aspects of the API call
      */
@@ -70,6 +71,11 @@ X extends IApiIntermediate = IApiIntermediate> {
         mock?: boolean;
     }): string | boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
+    /**
+     * If you want to pass in an error handler function in you can determine which
+     * errors should be handled (return of boolean flag).
+     */
+    errorHandler(fn: IErrorHandler): this;
     /**
      * **Query Parameters**
      *

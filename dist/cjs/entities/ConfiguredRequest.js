@@ -93,6 +93,10 @@ class ConfiguredRequest {
         this._calculations = shared_1.calculationUpdate(this._calculations, index_1.DynamicStateLocation.header, calculations);
         return this;
     }
+    errorHandler(fn) {
+        this._errorHandler = fn;
+        return this;
+    }
     queryParameters(qp) {
         const [staticProps, dynamics, calculations] = this.parseParameters(qp);
         this._qp = staticProps;
@@ -109,11 +113,21 @@ class ConfiguredRequest {
         const isMockRequest = this.isMockRequest(request.mockConfig);
         const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
         let result;
-        if (isMockRequest) {
-            result = await this.mockRequest(request, axiosOptions);
+        try {
+            if (isMockRequest) {
+                result = await this.mockRequest(request, axiosOptions);
+            }
+            else {
+                result = await this.makeRequest(request, axiosOptions);
+            }
         }
-        else {
-            result = await this.makeRequest(request, axiosOptions);
+        catch (e) {
+            if (this._errorHandler) {
+                const handlerOutcome = this._errorHandler(e);
+                if (handlerOutcome === false)
+                    throw e;
+                result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
+            }
         }
         if (result.status >= 300) {
             throw new errors_1.ConfiguredRequestError(`The API endpoint [ ${this._method.toUpperCase()} ${request.url} ] failed with a ${result.status} / ${result.statusText}} error code.`, String(result.status), result.status);

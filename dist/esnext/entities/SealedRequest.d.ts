@@ -1,5 +1,5 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IAllRequestOptions, IApiInput } from "../cr-types";
+import { IAllRequestOptions, IApiInput, IErrorHandler } from "../cr-types";
 export declare class SealedRequest<I extends IApiInput, O> {
     private req;
     constructor(req: ConfiguredRequest<I, O>);
@@ -19,6 +19,13 @@ export declare class SealedRequest<I extends IApiInput, O> {
      * the passed in dynamic props
      */
     requestInfo(props?: Partial<I>, options?: IAllRequestOptions): import("../cr-types").IConfiguredApiRequest<I>;
+    /**
+     * If you want to pass in an error handler you can be notified
+     * of all errors. If you return `false` the error will _still_ be
+     * thrown but any other value will be passed back as the `data`
+     * property of the response.
+     */
+    errorHandler(eh: IErrorHandler): this;
     toString(): string;
     toJSON(): {
         method: "get" | "put" | "post" | "delete" | "patch";
