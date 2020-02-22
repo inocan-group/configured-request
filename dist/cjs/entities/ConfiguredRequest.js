@@ -129,6 +129,9 @@ class ConfiguredRequest {
                     throw e;
                 result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
             }
+            else {
+                throw e;
+            }
         }
         return this._mapping
             ? this._mapping((_a = result) === null || _a === void 0 ? void 0 : _a.data)
