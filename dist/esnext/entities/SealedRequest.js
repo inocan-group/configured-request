@@ -6,7 +6,9 @@ export class SealedRequest {
      * Make a request to the configured API endpoint
      */
     async request(props, options = {}) {
-        return this.req.request(props, options);
+        const response = this.req.request(props, options);
+        this.req.errorHandler(undefined); // reset error handler
+        return response;
     }
     /**
      * Make a request to the **Mock** API.
@@ -23,6 +25,16 @@ export class SealedRequest {
      */
     requestInfo(props, options = {}) {
         return this.req.requestInfo(props, options);
+    }
+    /**
+     * If you want to pass in an error handler you can be notified
+     * of all errors. If you return `false` the error will _still_ be
+     * thrown but any other value will be passed back as the `data`
+     * property of the response.
+     */
+    errorHandler(eh) {
+        this.req.errorHandler(eh);
+        return this;
     }
     toString() {
         return this.req.toString();

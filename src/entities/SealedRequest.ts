@@ -1,5 +1,10 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IRequestInfo, IAllRequestOptions, IApiInput } from "../cr-types";
+import {
+  IRequestInfo,
+  IAllRequestOptions,
+  IApiInput,
+  IErrorHandler
+} from "../cr-types";
 
 export class SealedRequest<I extends IApiInput, O> {
   constructor(private req: ConfiguredRequest<I, O>) {}
@@ -8,7 +13,9 @@ export class SealedRequest<I extends IApiInput, O> {
    * Make a request to the configured API endpoint
    */
   async request(props?: I, options: IAllRequestOptions = {}) {
-    return this.req.request(props, options);
+    const response = this.req.request(props, options);
+    this.req.errorHandler(undefined); // reset error handler
+    return response;
   }
 
   /**
@@ -27,6 +34,17 @@ export class SealedRequest<I extends IApiInput, O> {
    */
   requestInfo(props?: Partial<I>, options: IAllRequestOptions = {}) {
     return this.req.requestInfo(props, options);
+  }
+
+  /**
+   * If you want to pass in an error handler you can be notified
+   * of all errors. If you return `false` the error will _still_ be
+   * thrown but any other value will be passed back as the `data`
+   * property of the response.
+   */
+  errorHandler(eh: IErrorHandler) {
+    this.req.errorHandler(eh);
+    return this;
   }
 
   toString() {
