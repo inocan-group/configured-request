@@ -5,7 +5,14 @@ class SealedRequest {
         this.req = req;
     }
     async request(props, options = {}) {
-        const response = await this.req.request(props, options);
+        let response;
+        try {
+            response = await this.req.request(props, options);
+        }
+        catch (e) {
+            this.req.errorHandler(undefined);
+            throw e;
+        }
         this.req.errorHandler(undefined);
         return response;
     }
