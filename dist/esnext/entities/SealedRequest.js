@@ -6,7 +6,14 @@ export class SealedRequest {
      * Make a request to the configured API endpoint
      */
     async request(props, options = {}) {
-        const response = await this.req.request(props, options);
+        let response;
+        try {
+            response = await this.req.request(props, options);
+        }
+        catch (e) {
+            this.req.errorHandler(undefined); // reset error
+            throw e;
+        }
         this.req.errorHandler(undefined); // reset error
         return response;
     }
