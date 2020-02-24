@@ -150,14 +150,15 @@ class ConfiguredRequest {
             if (idx === 0) {
                 return urlPart;
             }
-            const partial = urlPart.replace(/}.*/, "");
-            const [propName, defaultValue] = partial.includes(":")
-                ? partial.split(":")
-                : [partial, "default-value-undefined"];
+            const justVariable = urlPart.replace(/}.*/, "");
+            const afterVariable = urlPart.replace(/.*}/, "");
+            const [propName, defaultValue] = justVariable.includes(":")
+                ? justVariable.split(":")
+                : [justVariable, "default-value-undefined"];
             const hasDefaultValue = defaultValue !== "default-value-undefined" ? true : false;
             const requestHasValue = props && Object.keys(props).includes(propName) ? true : false;
             if (requestHasValue) {
-                return props[propName];
+                return props[propName] + afterVariable;
             }
             else if (hasDefaultValue) {
                 return defaultValue;
