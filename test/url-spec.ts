@@ -55,4 +55,24 @@ describe("URL tests", () => {
       "https://test.com/products/1234?limit=50&offset=100"
     );
   });
+
+  it("multiple query parameters and URL param mid-string", () => {
+    const API = ConfiguredRequest.get<{
+      brand_slug?: string;
+      limit: number;
+      offset: number;
+    }>("https://test.com/brands/{brand_slug}/products")
+      .queryParameters({ limit: dynamic(10), offset: dynamic(0) })
+      .seal();
+
+    const request = API.requestInfo({
+      brand_slug: "1234",
+      limit: 50,
+      offset: 100
+    });
+
+    expect(request.url).to.equal(
+      "https://test.com/brands/1234/products?limit=50&offset=100"
+    );
+  });
 });
