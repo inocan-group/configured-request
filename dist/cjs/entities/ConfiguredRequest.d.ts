@@ -4,7 +4,7 @@ import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
-export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate> {
+export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any> {
     static authWhitelist: string[];
     static authBlacklist: string[];
     static networkDelay: INetworkDelaySetting;
@@ -21,10 +21,10 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     private _dynamics;
     private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
     constructor();
     mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IDictionary & {

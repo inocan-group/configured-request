@@ -14,7 +14,7 @@ export const DEFAULT_HEADERS = {
     Connection: "keep-alive"
 };
 /**
- * **Request**
+ * **ConfiguredRequest**
  *
  * Allows the configuration of an RESTful API endpoint and subsequently the calling of this
  * request. The typing for this is:
@@ -240,7 +240,8 @@ export class ConfiguredRequest {
             "mock",
             "networkDelay",
             "authWhiteList",
-            "authBlacklist"
+            "authBlacklist",
+            "db"
         ]);
         const apiRequest = {
             props: props,
@@ -327,7 +328,7 @@ export class ConfiguredRequest {
             throw new ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", HttpStatusCodes.NotImplemented);
         }
         try {
-            const response = this._mockFn(request.props, request);
+            const response = await this._mockFn(this, options);
             await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
             return fakeAxios(response, request);
         }
@@ -350,7 +351,7 @@ export class ConfiguredRequest {
             case "put":
                 return axios.put(url, body, options);
             case "post":
-                return axios.put(url, body, options);
+                return axios.post(url, body, options);
             case "delete":
                 return axios.delete(url, options);
             case "patch":

@@ -1,8 +1,9 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
 import { IAllRequestOptions, IApiInput, IErrorHandler } from "../cr-types";
-export declare class SealedRequest<I extends IApiInput, O> {
+export declare class SealedRequest<I extends IApiInput, O, M = any> {
     private req;
-    constructor(req: ConfiguredRequest<I, O>);
+    private _db;
+    constructor(req: ConfiguredRequest<I, O, M>);
     request(props?: I, options?: IAllRequestOptions): Promise<O>;
     mock(props?: I, options?: IAllRequestOptions): Promise<O>;
     requestInfo(props?: Partial<I>, options?: IAllRequestOptions): import("../cr-types").IConfiguredApiRequest<I>;

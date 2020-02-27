@@ -40,7 +40,7 @@ export const DEFAULT_HEADERS: IDictionary<string> = {
 };
 
 /**
- * **Request**
+ * **ConfiguredRequest**
  *
  * Allows the configuration of an RESTful API endpoint and subsequently the calling of this
  * request. The typing for this is:
@@ -84,7 +84,7 @@ export class ConfiguredRequest<
   private _body?: I["body"];
   private _bodyType: IApiBodyType = "JSON";
   private _mockConfig: IMockOptions = {};
-  private _mockFn?: IApiMock<I, O>;
+  private _mockFn?: IApiMock<I, O, M>;
   private _mapping: (input: X) => O;
   private _errorHandler: IErrorHandler;
   /**
@@ -486,7 +486,7 @@ export class ConfiguredRequest<
    */
   private async mockRequest(
     request: IConfiguredApiRequest<I>,
-    options: AxiosRequestConfig
+    options: IAllRequestOptions
   ): Promise<AxiosResponse<O>> {
     if (!this._mockFn) {
       throw new ConfiguredRequestError(
@@ -497,7 +497,7 @@ export class ConfiguredRequest<
     }
 
     try {
-      const response = await this._mockFn(request.props, request);
+      const response = await this._mockFn(this, options);
       await this.mockNetworkDelay(
         request.mockConfig.networkDelay || this._mockConfig.networkDelay
       );

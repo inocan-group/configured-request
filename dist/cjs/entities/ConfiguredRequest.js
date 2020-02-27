@@ -180,7 +180,8 @@ class ConfiguredRequest {
             "mock",
             "networkDelay",
             "authWhiteList",
-            "authBlacklist"
+            "authBlacklist",
+            "db"
         ]);
         const apiRequest = {
             props: props,
@@ -250,7 +251,7 @@ class ConfiguredRequest {
             throw new errors_1.ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", common_types_1.HttpStatusCodes.NotImplemented);
         }
         try {
-            const response = this._mockFn(request.props, request);
+            const response = await this._mockFn(this, options);
             await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
             return shared_1.fakeAxios(response, request);
         }
@@ -266,7 +267,7 @@ class ConfiguredRequest {
             case "put":
                 return axios_1.default.put(url, body, options);
             case "post":
-                return axios_1.default.put(url, body, options);
+                return axios_1.default.post(url, body, options);
             case "delete":
                 return axios_1.default.delete(url, options);
             case "patch":
