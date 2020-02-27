@@ -1,4 +1,5 @@
 import { IDictionary, datetime, seconds } from "common-types";
+import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 import { AxiosRequestConfig, AxiosError } from "axios";
 export interface IRequestInfo {
     method: IRequestVerb;
@@ -29,8 +30,8 @@ export interface IDatedScrape<T> {
     duration?: seconds;
     data: T;
 }
-export interface IApiMock<I extends IApiInput, O> {
-    (request: I, config: Omit<IConfiguredApiRequest<I>, "props">): O;
+export interface IApiMock<I extends IApiInput, O, M = any> {
+    (request: ConfiguredRequest<I, O>, options: IMockOptions<M>): Promise<O>;
 }
 export declare enum ApiBodyType {
     JSON = "JSON",
@@ -54,11 +55,12 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
     axiosOptions: AxiosRequestConfig;
     mockConfig: IMockOptions;
 }
-export interface IMockOptions {
+export interface IMockOptions<M = any> {
     mock?: boolean;
     networkDelay?: INetworkDelaySetting;
     authWhitelist?: string[];
     authBlacklist?: string[];
+    db?: M;
 }
 export declare type INetworkDelaySetting = "light" | "medium" | "heavy" | "very-heavy";
 export declare type IAllRequestOptions = IMockOptions & AxiosRequestConfig;

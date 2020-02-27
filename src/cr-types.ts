@@ -47,16 +47,8 @@ export interface IDatedScrape<T> {
 }
 
 /** A function that sends back a mocked response to a given endpoint */
-export interface IApiMock<I extends IApiInput, O> {
-  (
-    request: I,
-    config: Omit<IConfiguredApiRequest<I>, "props">,
-    options: IApiMockOptions
-  ): Promise<O>;
-}
-
-export interface IApiMockOptions {
-  db: any;
+export interface IApiMock<I extends IApiInput, O, M = any> {
+  (request: ConfiguredRequest<I, O>, options: IMockOptions<M>): Promise<O>;
 }
 
 export enum ApiBodyType {

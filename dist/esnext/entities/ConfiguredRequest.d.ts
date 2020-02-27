@@ -5,7 +5,7 @@ import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
 /**
- * **Request**
+ * **ConfiguredRequest**
  *
  * Allows the configuration of an RESTful API endpoint and subsequently the calling of this
  * request. The typing for this is:
@@ -31,7 +31,11 @@ O extends IApiOutput = IApiOutput,
  * if you are doing a transform before returning <O> you can state a preliminary type that comes back
  * from the API directly
  */
-X extends IApiIntermediate = IApiIntermediate> {
+X extends IApiIntermediate = IApiIntermediate, 
+/**
+ * The type/API for the mocking database, if it is passed in by the run-time environment
+ */
+M = any> {
     static authWhitelist: string[];
     static authBlacklist: string[];
     static networkDelay: INetworkDelaySetting;
@@ -54,10 +58,10 @@ X extends IApiIntermediate = IApiIntermediate> {
      */
     private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate>(url: string): ConfiguredRequest<I, O, X>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
     constructor();
     /**
      * Add a mock function for this API endpoint.
