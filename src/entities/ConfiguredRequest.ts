@@ -520,7 +520,7 @@ export class ConfiguredRequest<
       case "put":
         return axios.put<O>(url, body, options);
       case "post":
-        return axios.put<O>(url, body, options);
+        return axios.post<O>(url, body, options);
       case "delete":
         return axios.delete<O>(url, options);
       case "patch":
