@@ -66,7 +66,11 @@ export class ConfiguredRequest<
    * if you are doing a transform before returning <O> you can state a preliminary type that comes back
    * from the API directly
    */
-  X extends IApiIntermediate = IApiIntermediate
+  X extends IApiIntermediate = IApiIntermediate,
+  /**
+   * The type/API for the mocking database, if it is passed in by the run-time environment
+   */
+  M = any
 > {
   // Static props which serve as defaults for new instances
   public static authWhitelist: string[];
@@ -100,9 +104,10 @@ export class ConfiguredRequest<
   static get<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IApiOutput = IApiOutput,
-    X extends IApiIntermediate = IApiIntermediate
+    X extends IApiIntermediate = IApiIntermediate,
+    M = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X>();
+    const obj = new ConfiguredRequest<I, O, X, M>();
     obj._method = "get";
     obj.setUrl(url);
     return obj;
@@ -110,9 +115,10 @@ export class ConfiguredRequest<
   static post<
     I extends IApiInputWithBody = IApiInputWithBody,
     O extends IApiOutput = IApiOutput,
-    X extends IApiIntermediate = IApiIntermediate
+    X extends IApiIntermediate = IApiIntermediate,
+    M = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X>();
+    const obj = new ConfiguredRequest<I, O, X, M>();
     obj._method = "post";
     obj.setUrl(url);
     return obj;
@@ -120,9 +126,10 @@ export class ConfiguredRequest<
   static put<
     I extends IApiInputWithBody = IApiInputWithBody,
     O extends IApiOutput = IApiOutput,
-    X extends IApiIntermediate = IApiIntermediate
+    X extends IApiIntermediate = IApiIntermediate,
+    M = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X>();
+    const obj = new ConfiguredRequest<I, O, X, M>();
     obj._method = "put";
     obj.setUrl(url);
     return obj;
@@ -130,9 +137,10 @@ export class ConfiguredRequest<
   static delete<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IApiOutput = IApiOutput,
-    X extends IApiIntermediate = IApiIntermediate
+    X extends IApiIntermediate = IApiIntermediate,
+    M = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X>();
+    const obj = new ConfiguredRequest<I, O, X, M>();
     obj._method = "delete";
     obj.setUrl(url);
     return obj;
@@ -372,7 +380,8 @@ export class ConfiguredRequest<
       "mock",
       "networkDelay",
       "authWhiteList",
-      "authBlacklist"
+      "authBlacklist",
+      "db"
     ]);
 
     const apiRequest = {
@@ -488,7 +497,7 @@ export class ConfiguredRequest<
     }
 
     try {
-      const response = this._mockFn(request.props, request);
+      const response = await this._mockFn(request.props, request);
       await this.mockNetworkDelay(
         request.mockConfig.networkDelay || this._mockConfig.networkDelay
       );
@@ -520,7 +529,7 @@ export class ConfiguredRequest<
       case "put":
         return axios.put<O>(url, body, options);
       case "post":
-        return axios.put<O>(url, body, options);
+        return axios.post<O>(url, body, options);
       case "delete":
         return axios.delete<O>(url, options);
       case "patch":

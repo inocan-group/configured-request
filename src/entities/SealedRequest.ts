@@ -6,8 +6,9 @@ import {
   IErrorHandler
 } from "../cr-types";
 
-export class SealedRequest<I extends IApiInput, O> {
-  constructor(private req: ConfiguredRequest<I, O>) {}
+export class SealedRequest<I extends IApiInput, O, M = any> {
+  private _db: M;
+  constructor(private req: ConfiguredRequest<I, O, M>) {}
 
   /**
    * Make a request to the configured API endpoint
