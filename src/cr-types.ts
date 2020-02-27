@@ -48,7 +48,15 @@ export interface IDatedScrape<T> {
 
 /** A function that sends back a mocked response to a given endpoint */
 export interface IApiMock<I extends IApiInput, O> {
-  (request: I, config: Omit<IConfiguredApiRequest<I>, "props">): O;
+  (
+    request: I,
+    config: Omit<IConfiguredApiRequest<I>, "props">,
+    options: IApiMockOptions
+  ): Promise<O>;
+}
+
+export interface IApiMockOptions {
+  db: any;
 }
 
 export enum ApiBodyType {
@@ -79,7 +87,9 @@ export type DynamicFunction<I> = (request: I) => Scalar | NamedValuePair;
 export interface IConfiguredApiRequest<I extends IApiInput> {
   method: IRequestVerb;
   /**
-   * The properties passed in as part of the request
+   * The properties passed in as part of the request; note that this is NOT the
+   * body of the message but rather dynamic properties defined in the definition
+   * of the `ConfiguredRequest`
    */
   props: I;
   /**
@@ -122,11 +132,32 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
  * The request options which are _not_ going to be
  * passed to the Axios request.
  */
-export interface IMockOptions {
+export interface IMockOptions<M = any> {
+  /**
+   * Should the request be mocked instead of sending a real
+   * network request
+   */
   mock?: boolean;
+  /**
+   * What sort of simulated network delay is desired?
+   */
   networkDelay?: INetworkDelaySetting;
+  /**
+   * Allows certain bearer tokens to be _white listed_ as valid
+   * during a mock request.
+   */
   authWhitelist?: string[];
+  /**
+   * Allows certain bearer tokens to be _black listed_ as valid
+   * during a mock request.
+   */
   authBlacklist?: string[];
+  /**
+   * optionally pass in a mock database which the allows the mocked API endpoint
+   * to interact with a in-memory database which the frontend consumer may also
+   * use.
+   */
+  db?: M;
 }
 
 export type INetworkDelaySetting = "light" | "medium" | "heavy" | "very-heavy";

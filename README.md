@@ -210,7 +210,8 @@ You can pass in a _mock function_ to the configuration which will mock an API re
 // define the mock
 const mockFn: IApiMock<I, O> = (
   request: I,
-  config: ConfiguredRequest<I, O>
+  config: ConfiguredRequest<I, O>,
+  db?: any
 ) => {
   if (["productId", "operation"].every(i => request[i] !== undefined)) {
     return {
@@ -286,6 +287,68 @@ With this mocking capability now available, the consumers can leverage this thro
     - `MOCK_API_AUTH_WHITELIST`
 
           The same principle as _black listing_ but instead you list tokens which are considered valid. In general you should choose between _white_ and _black_ listing but not use both.
+
+### Connecting the Mock Endpoint to a Mock Database
+
+It is not uncommon that the two primary sources of state are an application's primary database as well as API's that may come from both internal as well as external sources. For the internal API's it is also possible that calling an internal API endpoint will result in changes to the same database that your application uses (or that the internal API endpoint may derive/get some state from that database but not write to it). This use-case increases substantially when you use a database like Firebase's Real-Time Database or Firestore. Both of these databases provide a convenient means for the client apps to interact directly with the database but there are use cases where a backend is needed to deal with more complicated authentication/authorization business logic.
+
+To address this, a `ConfiguredRequest` allows you to optionally pass along a "db" reference at run time. This reference is is intended to provide your mock function the means to interact with a database (in most cases this would be a _mock_ database or static object representing a shared data state for the front and backend to share ). Imagine an example where the API access for an app has a simple `get`/`set` API not dissimlar to a lot of document/no-sql databases and that the frontend calls the mock with the following:
+
+```typescript
+const db = new myMockDatabase({ products: { 1234: { name: "snazzy" } } });
+const product = await ProductDetail.mock({ id: "1234" }, { db });
+```
+
+With this request the mock function get's not only the standard `ConfiguredRequest` object but also the `db` property and can respond in the following way:
+
+```typescript
+export mockFn = async (context: ConfigureRequest<undefined, {product: Product}>, { db }) => {
+  if(db) {
+    const product = await db.get(Product, "1234");
+    return product;
+  } else {
+    // ok no shared DB so just fake it
+    return {
+      name: "The Magic Carpet",
+      price: 10000000
+    }
+  }
+}
+```
+
+In the above example the mock function doesn't _assume_ that it will get a DB connection but if it does it can do more.
+
+> the above example is loosely modeled off the interaction/api you might use with a mock DB from [Firemodel](https://firemodel.info) but any API is supported and therefore the **db** property is typed as `all` in `IApiMock` type.
+
+```typescript
+xport interface IApiMock<I extends IApiInput, O> {
+  (
+    request: I,
+    config: Omit<IConfiguredApiRequest<I>, "props">,
+    options: IApiMockOptions
+  ): Promise<O>;
+}
+
+export interface IMockOptions<M = any> {
+  db: M;
+  // ...
+}
+```
+
+If you really want to narrow the typing for DB at _design time_ you can by passing in the type like so:
+
+```typescript
+const MyConfiguredRequest = ConfiguredRequest.get<
+  Request,
+  Response,
+  Intermediate,
+  DB
+>("https://somewhere.com")
+  .mockFn(mock)
+  .seal();
+```
+
+In most cases, however, this level of typing is not critical to enforce at design time as the runtime environment _should_ have all the typing for the function and thereby the real source of value for the typing is achieved.
 
 ## Result Mapping
 
