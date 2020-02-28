@@ -251,7 +251,7 @@ class ConfiguredRequest {
             throw new errors_1.ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", common_types_1.HttpStatusCodes.NotImplemented);
         }
         try {
-            const response = await this._mockFn(this, options);
+            const response = await this._mockFn(request.props, this, options);
             await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
             return shared_1.fakeAxios(response, request);
         }

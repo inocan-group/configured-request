@@ -497,7 +497,7 @@ export class ConfiguredRequest<
     }
 
     try {
-      const response = await this._mockFn(this, options);
+      const response = await this._mockFn(request.props, this, options);
       await this.mockNetworkDelay(
         request.mockConfig.networkDelay || this._mockConfig.networkDelay
       );
