@@ -13,7 +13,7 @@ describe("Mapping results", () => {
       }>;
     }
 
-    const mock: IApiMock<IRequest, IResponse<any>> = (req, config) => {
+    const mock: IApiMock<IRequest, IResponse<any>> = config => {
       return {
         data: [
           {

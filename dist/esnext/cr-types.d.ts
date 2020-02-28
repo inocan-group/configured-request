@@ -36,7 +36,12 @@ export interface IDatedScrape<T> {
 }
 /** A function that sends back a mocked response to a given endpoint */
 export interface IApiMock<I extends IApiInput, O, M = any> {
-    (request: ConfiguredRequest<I, O>, options: IMockOptions<M>): Promise<O>;
+    (
+    /**
+     * The run-time parameters passed into the request; this should conform to the
+     * input interface `I`.
+     */
+    request: I, config: ConfiguredRequest<I, O, any, M>, options?: IMockOptions<M>): O | Promise<O>;
 }
 export declare enum ApiBodyType {
     JSON = "JSON",
