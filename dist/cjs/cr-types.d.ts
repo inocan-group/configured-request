@@ -1,6 +1,6 @@
 import { IDictionary, datetime, seconds } from "common-types";
-import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 import { AxiosRequestConfig, AxiosError } from "axios";
+import { ActiveRequest } from "./entities/ActiveRequest";
 export interface IRequestInfo {
     method: IRequestVerb;
     headers: IDictionary<Scalar>;
@@ -31,7 +31,7 @@ export interface IDatedScrape<T> {
     data: T;
 }
 export interface IApiMock<I extends IApiInput, O, M = any> {
-    (request: I, config: ConfiguredRequest<I, O, any, M>, options?: IMockOptions<M>): O | Promise<O>;
+    (request: ActiveRequest<I, O, any, M>, options?: IMockOptions<M>): O | Promise<O>;
 }
 export declare enum ApiBodyType {
     JSON = "JSON",

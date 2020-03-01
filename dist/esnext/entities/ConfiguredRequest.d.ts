@@ -71,9 +71,7 @@ M = any> {
      * parameter which everything you should need to
      */
     mockFn(fn: IApiMock<I, O>): this;
-    isMockRequest(options?: IDictionary & {
-        mock?: boolean;
-    }): boolean;
+    isMockRequest(options?: IAllRequestOptions): boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
     /**
      * If you want to pass in an error handler function in you can determine which
@@ -104,11 +102,11 @@ M = any> {
      * Request the API endpoint; returning the endpoint payload if successful
      * and throwing an error if the Axios status is anything higher than 300.
      *
-     * @param props the parameters for this request (if any)
+     * @param requestProps the parameters for this request (if any)
      * @param options any Axios options which you want to pass along; this will be combined
      * with any options which were included in `_designOptions`.
      */
-    request(props?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
+    request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
     /**
      * If there are Axios request options which you which to pass along for every request
      * you can do that by setting them here. Note that each request can also send options

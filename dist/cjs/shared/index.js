@@ -7,5 +7,5 @@ __export(require("./bodyToString"));
 __export(require("./calculationUpdate"));
 __export(require("./dynamicUpdate"));
 __export(require("./extract"));
-__export(require("./fakeAxios"));
+__export(require("./fakeAxiosResponse"));
 __export(require("./between"));
