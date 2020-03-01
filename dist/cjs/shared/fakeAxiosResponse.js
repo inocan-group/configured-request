@@ -1,4 +1,6 @@
-export function fakeAxios(response, request) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function fakeAxiosResponse(response, request) {
     return {
         data: response,
         status: response ? 200 : 204,
@@ -7,3 +9,4 @@ export function fakeAxios(response, request) {
         config: request.axiosOptions
     };
 }
+exports.fakeAxiosResponse = fakeAxiosResponse;

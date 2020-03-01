@@ -8,26 +8,41 @@ import { ConfiguredRequestError } from "../errors";
  * to Axios too; mainly for consistency sake as it quite quickly
  */
 export class ActiveRequest {
-    constructor(params, options, req) {
-        this.params = params;
-        this.options = options;
-        this.req = req;
+    /**
+     * Builds a new `ActiveRequest` from run time parameters parameters and options and leveraging
+     * the configured business logic that was put in place at design time.
+     *
+     * @param params The dynamic properties passed into this request
+     * @param options any options parameters -- both Axios options and/or Mock options -- to modify behavior
+     * @param configuredRequest the `ConfiguredRequest` instance
+     */
+    constructor(params, options, configuredRequest) {
+        this._params = params;
+        this._options = options;
+        this._configuredRequest = configuredRequest;
+    }
+    /**
+     * The active parameters passed into the request to make it
+     * an "active request"
+     */
+    get params() {
+        return this._params;
     }
     /**
      * the _headers_ being sent out as part of the request
      */
     get headers() {
-        return this.req.requestInfo(this.params).headers;
+        return this.requestInfo().headers;
     }
     /** the _query parameters_ which have been incorporated into the **url** */
     get queryParameters() {
-        return this.req.requestInfo(this.params).queryParameters;
+        return this.requestInfo().queryParameters;
     }
     /**
      * The request's URL, including all query parameters (where they exist)
      */
     get url() {
-        return this.req.requestInfo(this.params).url;
+        return this.requestInfo().url;
     }
     /**
      * The body of the message in a structured format (all requests will
@@ -37,20 +52,27 @@ export class ActiveRequest {
      * type.
      */
     get body() {
-        return this.req.requestInfo(this.params).payload;
+        return this.requestInfo().payload;
     }
     /**
      * The HTTP request VERB for the request (aka, `get`, `put`, etc.)
      */
     get method() {
-        return this.req.requestInfo(this.params).method;
+        return this.requestInfo().method;
     }
     /**
      * The options hash -- with the exception of the _headers_ -- which
      * will be added to the Axios request.
      */
     get axiosOptions() {
-        return this.req.requestInfo(this.params).axiosOptions;
+        return this.requestInfo().axiosOptions;
+    }
+    /**
+     * boolean flag indicating whether this active request is being
+     * treated as a _mock_ request or not
+     */
+    get isMockRequest() {
+        return this.requestInfo().isMockRequest;
     }
     /**
      * The configuration options for a mocking function.
@@ -60,7 +82,7 @@ export class ActiveRequest {
      * available to mocked requests.
      */
     get mockConfig() {
-        return this.req.requestInfo(this.params).mockConfig || {};
+        return this.requestInfo().mockConfig || {};
     }
     /**
      * If the request is a mock request _and_ there was a `db` property
@@ -72,15 +94,25 @@ export class ActiveRequest {
      * it when you are in a non-mocking scenario.
      */
     get mockDb() {
-        if (!this.req.requestInfo(this.params).isMockRequest) {
+        if (!this.isMockRequest) {
             throw new ConfiguredRequestError(`Attempts to evaluate the "mockDb" with a request which is NOT a mock request!`, "not-mock");
         }
         return this.mockConfig.db;
     }
+    requestInfo() {
+        return this._configuredRequest.requestInfo(this.params, this._options);
+    }
     toString() {
-        return this.req.toString();
+        return this.method + " " + this.url;
     }
     toJSON() {
-        return this.req.toJSON();
+        return {
+            method: this.method,
+            url: this.url,
+            queryParameters: this.queryParameters,
+            headers: this.headers,
+            body: this.body,
+            options: this._options
+        };
     }
 }

@@ -1,9 +1,9 @@
 {
   "name": "configured-request",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "configured-request",
   "license": "MIT",
-  "repository": "https://your-server.com/inocan-group/configured-request",
+  "repository": "https://github.com/inocan-group/configured-request",
   "author": "Ken Snyder <ken@ken.net>",
   "keywords": [
     "serverless",

@@ -1,6 +1,6 @@
 import { HttpStatusCodes, wait } from "common-types";
-import { DynamicStateLocation, isDynamicProp } from "../index";
-import { calculationUpdate, bodyToString, fakeAxios, between } from "../shared";
+import { DynamicStateLocation, isDynamicProp, ActiveRequest } from "../index";
+import { calculationUpdate, bodyToString, fakeAxiosResponse, between } from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios from "axios";
@@ -155,22 +155,21 @@ export class ConfiguredRequest {
      * Request the API endpoint; returning the endpoint payload if successful
      * and throwing an error if the Axios status is anything higher than 300.
      *
-     * @param props the parameters for this request (if any)
+     * @param requestProps the parameters for this request (if any)
      * @param options any Axios options which you want to pass along; this will be combined
      * with any options which were included in `_designOptions`.
      */
-    async request(props, runTimeOptions = {}) {
+    async request(requestProps, runTimeOptions = {}) {
         var _a, _b;
-        const info = this.requestInfo(props, runTimeOptions);
-        const axiosOptions = Object.assign({ headers: info.headers }, info.axiosOptions);
+        const request = new ActiveRequest(requestProps, runTimeOptions, this);
         let result;
         // MOCK or NETWORK REQUEST
         try {
-            if (info.isMockRequest) {
-                result = await this.mockRequest(info, axiosOptions);
+            if (request.isMockRequest) {
+                result = await this.mockRequest(request);
             }
             else {
-                result = await this.makeRequest(info, axiosOptions);
+                result = await this.makeRequest(request);
             }
         }
         catch (e) {
@@ -255,7 +254,7 @@ export class ConfiguredRequest {
             payload: payload,
             bodyType,
             body,
-            isMockRequest: this.isMockRequest(mockConfig) ? true : false,
+            isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
             mockConfig,
             axiosOptions
         };
@@ -325,14 +324,14 @@ export class ConfiguredRequest {
      * @param url The URL including query parameters
      * @param options Mock options
      */
-    async mockRequest(request, options) {
+    async mockRequest(request) {
         if (!this._mockFn) {
-            throw new ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", HttpStatusCodes.NotImplemented);
+            throw new ConfiguredRequestError(`The API endpoint at "${request.url}" does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", HttpStatusCodes.NotImplemented);
         }
         try {
-            const response = await this._mockFn(request.props, this, options);
             await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
-            return fakeAxios(response, request);
+            const response = await this._mockFn(request);
+            return fakeAxiosResponse(response, request);
         }
         catch (e) {
             throw new ConfiguredRequestError(e.message || `Problem running the mock API request to ${request.url}`, "invalid-mock-call", e.httpStatusCode || HttpStatusCodes.BadRequest);
@@ -345,7 +344,8 @@ export class ConfiguredRequest {
      * @param url The URL including query parameters
      * @param options Axios options to pass along to the request
      */
-    async makeRequest(request, options) {
+    async makeRequest(request) {
+        const options = Object.assign(Object.assign({}, request.axiosOptions), { headers: request.headers });
         const { url, body } = request;
         switch (this._method) {
             case "get":

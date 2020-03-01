@@ -27,14 +27,12 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
     constructor();
     mockFn(fn: IApiMock<I, O>): this;
-    isMockRequest(options?: IDictionary & {
-        mock?: boolean;
-    }): boolean;
+    isMockRequest(options?: IAllRequestOptions): boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
     errorHandler(fn: IErrorHandler): this;
     queryParameters(qp: IDictionary): this;
     mapper(fn: (input: X) => O): this;
-    request(props?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
+    request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
     options(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">): this;
     requestInfo(props?: Partial<I>, runTimeOptions?: IAllRequestOptions): IConfiguredApiRequest<I>;
     seal(): SealedRequest<I, O>;

@@ -110,17 +110,16 @@ class ConfiguredRequest {
         this._mapping = fn;
         return this;
     }
-    async request(props, runTimeOptions = {}) {
+    async request(requestProps, runTimeOptions = {}) {
         var _a, _b;
-        const info = this.requestInfo(props, runTimeOptions);
-        const axiosOptions = Object.assign({ headers: info.headers }, info.axiosOptions);
+        const request = new index_1.ActiveRequest(requestProps, runTimeOptions, this);
         let result;
         try {
-            if (info.isMockRequest) {
-                result = await this.mockRequest(info, axiosOptions);
+            if (request.isMockRequest) {
+                result = await this.mockRequest(request);
             }
             else {
-                result = await this.makeRequest(info, axiosOptions);
+                result = await this.makeRequest(request);
             }
         }
         catch (e) {
@@ -195,7 +194,7 @@ class ConfiguredRequest {
             payload: payload,
             bodyType,
             body,
-            isMockRequest: this.isMockRequest(mockConfig) ? true : false,
+            isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
             mockConfig,
             axiosOptions
         };
@@ -248,20 +247,21 @@ class ConfiguredRequest {
         }
         return this;
     }
-    async mockRequest(request, options) {
+    async mockRequest(request) {
         if (!this._mockFn) {
-            throw new errors_1.ConfiguredRequestError(`The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", common_types_1.HttpStatusCodes.NotImplemented);
+            throw new errors_1.ConfiguredRequestError(`The API endpoint at "${request.url}" does NOT have a mock function so can not be used when mocking is enabled!`, "mock-not-ready", common_types_1.HttpStatusCodes.NotImplemented);
         }
         try {
-            const response = await this._mockFn(request.props, this, options);
             await this.mockNetworkDelay(request.mockConfig.networkDelay || this._mockConfig.networkDelay);
-            return shared_1.fakeAxios(response, request);
+            const response = await this._mockFn(request);
+            return shared_1.fakeAxiosResponse(response, request);
         }
         catch (e) {
             throw new errors_1.ConfiguredRequestError(e.message || `Problem running the mock API request to ${request.url}`, "invalid-mock-call", e.httpStatusCode || common_types_1.HttpStatusCodes.BadRequest);
         }
     }
-    async makeRequest(request, options) {
+    async makeRequest(request) {
+        const options = Object.assign(Object.assign({}, request.axiosOptions), { headers: request.headers });
         const { url, body } = request;
         switch (this._method) {
             case "get":

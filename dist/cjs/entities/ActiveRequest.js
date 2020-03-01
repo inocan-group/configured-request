@@ -2,43 +2,59 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const errors_1 = require("../errors");
 class ActiveRequest {
-    constructor(params, options, req) {
-        this.params = params;
-        this.options = options;
-        this.req = req;
+    constructor(params, options, configuredRequest) {
+        this._params = params;
+        this._options = options;
+        this._configuredRequest = configuredRequest;
+    }
+    get params() {
+        return this._params;
     }
     get headers() {
-        return this.req.requestInfo(this.params).headers;
+        return this.requestInfo().headers;
     }
     get queryParameters() {
-        return this.req.requestInfo(this.params).queryParameters;
+        return this.requestInfo().queryParameters;
     }
     get url() {
-        return this.req.requestInfo(this.params).url;
+        return this.requestInfo().url;
     }
     get body() {
-        return this.req.requestInfo(this.params).payload;
+        return this.requestInfo().payload;
     }
     get method() {
-        return this.req.requestInfo(this.params).method;
+        return this.requestInfo().method;
     }
     get axiosOptions() {
-        return this.req.requestInfo(this.params).axiosOptions;
+        return this.requestInfo().axiosOptions;
+    }
+    get isMockRequest() {
+        return this.requestInfo().isMockRequest;
     }
     get mockConfig() {
-        return this.req.requestInfo(this.params).mockConfig || {};
+        return this.requestInfo().mockConfig || {};
     }
     get mockDb() {
-        if (!this.req.requestInfo(this.params).isMockRequest) {
+        if (!this.isMockRequest) {
             throw new errors_1.ConfiguredRequestError(`Attempts to evaluate the "mockDb" with a request which is NOT a mock request!`, "not-mock");
         }
         return this.mockConfig.db;
     }
+    requestInfo() {
+        return this._configuredRequest.requestInfo(this.params, this._options);
+    }
     toString() {
-        return this.req.toString();
+        return this.method + " " + this.url;
     }
     toJSON() {
-        return this.req.toJSON();
+        return {
+            method: this.method,
+            url: this.url,
+            queryParameters: this.queryParameters,
+            headers: this.headers,
+            body: this.body,
+            options: this._options
+        };
     }
 }
 exports.ActiveRequest = ActiveRequest;

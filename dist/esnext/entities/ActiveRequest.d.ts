@@ -8,12 +8,25 @@ import { IAllRequestOptions, IApiInput } from "../cr-types";
  * benefit largely of mocking and debugging consumers but it is done for requests
  * to Axios too; mainly for consistency sake as it quite quickly
  */
-export declare class ActiveRequest<I extends IApiInput, O, M = any> {
-    private params;
-    private options;
-    private req;
+export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
     private _db;
-    constructor(params: I, options: IAllRequestOptions, req: ConfiguredRequest<I, O, M>);
+    private _options;
+    private _configuredRequest;
+    private _params;
+    /**
+     * Builds a new `ActiveRequest` from run time parameters parameters and options and leveraging
+     * the configured business logic that was put in place at design time.
+     *
+     * @param params The dynamic properties passed into this request
+     * @param options any options parameters -- both Axios options and/or Mock options -- to modify behavior
+     * @param configuredRequest the `ConfiguredRequest` instance
+     */
+    constructor(params: I, options: IAllRequestOptions, configuredRequest: ConfiguredRequest<I, O, X, M>);
+    /**
+     * The active parameters passed into the request to make it
+     * an "active request"
+     */
+    get params(): I;
     /**
      * the _headers_ being sent out as part of the request
      */
@@ -42,6 +55,11 @@ export declare class ActiveRequest<I extends IApiInput, O, M = any> {
      */
     get axiosOptions(): import("axios").AxiosRequestConfig;
     /**
+     * boolean flag indicating whether this active request is being
+     * treated as a _mock_ request or not
+     */
+    get isMockRequest(): boolean;
+    /**
      * The configuration options for a mocking function.
      *
      * This is only _relevant_ in the event that you are indeed _mocking_
@@ -59,12 +77,14 @@ export declare class ActiveRequest<I extends IApiInput, O, M = any> {
      * it when you are in a non-mocking scenario.
      */
     get mockDb(): any;
+    private requestInfo;
     toString(): string;
     toJSON(): {
         method: "get" | "put" | "post" | "delete" | "patch";
         url: string;
-        calculators: (string & keyof I)[];
-        requiredParameters: (string & keyof O)[];
-        optionalParameters: (string & keyof O)[];
+        queryParameters: import("common-types").IDictionary<string | number | boolean>;
+        headers: import("common-types").IDictionary<string | number | boolean>;
+        body: I["body"];
+        options: IAllRequestOptions;
     };
 }
