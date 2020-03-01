@@ -101,6 +101,11 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
      */
     axiosOptions: AxiosRequestConfig;
     /**
+     * indicates whether or not this request will be considered a mock request
+     * based on option parameters as well as ENV variables
+     */
+    isMockRequest: boolean;
+    /**
      * Options -- such as mocking -- which are _not_ related to Axios
      */
     mockConfig: IMockOptions;

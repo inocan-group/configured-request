@@ -73,7 +73,7 @@ M = any> {
     mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IDictionary & {
         mock?: boolean;
-    }): string | boolean;
+    }): boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
     /**
      * If you want to pass in an error handler function in you can determine which
@@ -163,8 +163,16 @@ M = any> {
      * be returned with a value of REQUIRED).
      */
     private getDynamics;
+    /**
+     * **runCalculations**
+     *
+     * Runs all the configured `calc` callbacks to resolve values
+     * for these dynamic properties.
+     */
     private runCalculations;
     /**
+     * **parseParameters**
+     *
      * Separates static properties from dynamic; "dynamic" properties
      * are those produced by a functional symbol export like `dynamic`
      * or `calc`.

@@ -12,9 +12,15 @@ import {
   IApiOutput,
   IApiIntermediate,
   IDynamicSymbolOutput,
-  IErrorHandler
+  IErrorHandler,
+  ActiveRequest
 } from "../index";
-import { calculationUpdate, bodyToString, fakeAxios, between } from "../shared";
+import {
+  calculationUpdate,
+  bodyToString,
+  fakeAxiosResponse,
+  between
+} from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
@@ -184,14 +190,14 @@ export class ConfiguredRequest<
     return this;
   }
 
-  isMockRequest(options: IDictionary & { mock?: boolean } = {}) {
-    return (
-      options.mock ||
+  isMockRequest(options: IAllRequestOptions = {}) {
+    return options.mock ||
       this._mockConfig.mock ||
       process.env["MOCK_API"] ||
       process.env["VUE_APP_MOCK_API"] ||
       false
-    );
+      ? true
+      : false;
   }
 
   headers(headers: IDictionary<string | number | boolean | Function>) {
@@ -269,22 +275,21 @@ export class ConfiguredRequest<
    * Request the API endpoint; returning the endpoint payload if successful
    * and throwing an error if the Axios status is anything higher than 300.
    *
-   * @param props the parameters for this request (if any)
+   * @param requestProps the parameters for this request (if any)
    * @param options any Axios options which you want to pass along; this will be combined
    * with any options which were included in `_designOptions`.
    */
-  async request(props?: I, runTimeOptions: IAllRequestOptions = {}) {
-    const request = this.requestInfo(props, runTimeOptions);
-    const isMockRequest = this.isMockRequest(request.mockConfig);
-    const axiosOptions = { headers: request.headers, ...request.axiosOptions };
+  async request(requestProps?: I, runTimeOptions: IAllRequestOptions = {}) {
+    const request = new ActiveRequest(requestProps, runTimeOptions, this);
+
     let result: AxiosResponse<O>;
 
     // MOCK or NETWORK REQUEST
     try {
-      if (isMockRequest) {
-        result = await this.mockRequest(request, axiosOptions);
+      if (request.isMockRequest) {
+        result = await this.mockRequest(request);
       } else {
-        result = await this.makeRequest(request, axiosOptions);
+        result = await this.makeRequest(request);
       }
     } catch (e) {
       if (this._errorHandler) {
@@ -395,6 +400,7 @@ export class ConfiguredRequest<
       payload: payload as I["body"],
       bodyType,
       body,
+      isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
       mockConfig,
       axiosOptions
     };
@@ -485,23 +491,22 @@ export class ConfiguredRequest<
    * @param options Mock options
    */
   private async mockRequest(
-    request: IConfiguredApiRequest<I>,
-    options: IAllRequestOptions
+    request: ActiveRequest<I, O, any, any>
   ): Promise<AxiosResponse<O>> {
     if (!this._mockFn) {
       throw new ConfiguredRequestError(
-        `The API endpoint at ${request.url} does NOT have a mock function so can not be used when mocking is enabled!`,
+        `The API endpoint at "${request.url}" does NOT have a mock function so can not be used when mocking is enabled!`,
         "mock-not-ready",
         HttpStatusCodes.NotImplemented
       );
     }
 
     try {
-      const response = await this._mockFn(request.props, this, options);
       await this.mockNetworkDelay(
         request.mockConfig.networkDelay || this._mockConfig.networkDelay
       );
-      return fakeAxios(response, request);
+      const response = await this._mockFn(request);
+      return fakeAxiosResponse(response, request);
     } catch (e) {
       throw new ConfiguredRequestError(
         e.message || `Problem running the mock API request to ${request.url}`,
@@ -518,11 +523,10 @@ export class ConfiguredRequest<
    * @param url The URL including query parameters
    * @param options Axios options to pass along to the request
    */
-  private async makeRequest(
-    request: IConfiguredApiRequest<I>,
-    options: IDictionary
-  ) {
+  private async makeRequest(request: ActiveRequest<I, O, any, any>) {
+    const options = { ...request.axiosOptions, headers: request.headers };
     const { url, body } = request;
+
     switch (this._method) {
       case "get":
         return axios.get<O>(url, options);
@@ -569,12 +573,19 @@ export class ConfiguredRequest<
     return dynamicsHash;
   }
 
+  /**
+   * **runCalculations**
+   *
+   * Runs all the configured `calc` callbacks to resolve values
+   * for these dynamic properties.
+   */
   private runCalculations(apiRequest: IConfiguredApiRequest<I>) {
     const [{ props: request }, config] = extract<
       I,
       Omit<IConfiguredApiRequest<I>, "props">,
       IConfiguredApiRequest<I>
     >(apiRequest, ["props"]);
+
     this._calculations.forEach(calc => {
       const value = calc.fn(request, config);
       if (calc.location === "queryParameter") {
@@ -587,6 +598,8 @@ export class ConfiguredRequest<
   }
 
   /**
+   * **parseParameters**
+   *
    * Separates static properties from dynamic; "dynamic" properties
    * are those produced by a functional symbol export like `dynamic`
    * or `calc`.

@@ -80,11 +80,13 @@ class ConfiguredRequest {
         return this;
     }
     isMockRequest(options = {}) {
-        return (options.mock ||
+        return options.mock ||
             this._mockConfig.mock ||
             process.env["MOCK_API"] ||
             process.env["VUE_APP_MOCK_API"] ||
-            false);
+            false
+            ? true
+            : false;
     }
     headers(headers) {
         const [staticProps, dynamics, calculations] = this.parseParameters(headers);
@@ -110,16 +112,15 @@ class ConfiguredRequest {
     }
     async request(props, runTimeOptions = {}) {
         var _a, _b;
-        const request = this.requestInfo(props, runTimeOptions);
-        const isMockRequest = this.isMockRequest(request.mockConfig);
-        const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
+        const info = this.requestInfo(props, runTimeOptions);
+        const axiosOptions = Object.assign({ headers: info.headers }, info.axiosOptions);
         let result;
         try {
-            if (isMockRequest) {
-                result = await this.mockRequest(request, axiosOptions);
+            if (info.isMockRequest) {
+                result = await this.mockRequest(info, axiosOptions);
             }
             else {
-                result = await this.makeRequest(request, axiosOptions);
+                result = await this.makeRequest(info, axiosOptions);
             }
         }
         catch (e) {
@@ -194,6 +195,7 @@ class ConfiguredRequest {
             payload: payload,
             bodyType,
             body,
+            isMockRequest: this.isMockRequest(mockConfig) ? true : false,
             mockConfig,
             axiosOptions
         };

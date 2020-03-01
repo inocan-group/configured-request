@@ -1,6 +1,7 @@
 import { IDictionary, datetime, seconds } from "common-types";
 import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 import { AxiosRequestConfig, AxiosError } from "axios";
+import { ActiveRequest } from "./entities/ActiveRequest";
 
 export interface IRequestInfo {
   method: IRequestVerb;
@@ -50,11 +51,10 @@ export interface IDatedScrape<T> {
 export interface IApiMock<I extends IApiInput, O, M = any> {
   (
     /**
-     * The run-time parameters passed into the request; this should conform to the
-     * input interface `I`.
+     * The active request's information passed in as an instance of
+     * `ActiveRequest` class.
      */
-    request: I,
-    config: ConfiguredRequest<I, O, any, M>,
+    request: ActiveRequest<I, O, any, M>,
     options?: IMockOptions<M>
   ): O | Promise<O>;
 }
@@ -122,6 +122,11 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
    * passed in later.
    */
   axiosOptions: AxiosRequestConfig;
+  /**
+   * indicates whether or not this request will be considered a mock request
+   * based on option parameters as well as ENV variables
+   */
+  isMockRequest: boolean;
   /**
    * Options -- such as mocking -- which are _not_ related to Axios
    */

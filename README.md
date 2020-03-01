@@ -299,7 +299,7 @@ const db = new myMockDatabase({ products: { 1234: { name: "snazzy" } } });
 const product = await ProductDetail.mock({ id: "1234" }, { db });
 ```
 
-With this request the mock function get's not only the standard `ConfiguredRequest` object but also the `db` property and can respond in the following way:
+With this request the mock function get's not only the standard `ActiveRequest` object but also the `db` property and can respond in the following way:
 
 ```typescript
 export mockFn = async (context: ConfigureRequest<undefined, {product: Product}>, { db }) => {
@@ -321,15 +321,11 @@ In the above example the mock function doesn't _assume_ that it will get a DB co
 > the above example is loosely modeled off the interaction/api you might use with a mock DB from [Firemodel](https://firemodel.info) but any API is supported and therefore the **db** property is typed as `all` in `IApiMock` type.
 
 ```typescript
-xport interface IApiMock<I extends IApiInput, O> {
-  (
-    request: I,
-    config: Omit<IConfiguredApiRequest<I>, "props">,
-    options: IApiMockOptions
-  ): Promise<O>;
+export interface IApiMock<I extends IApiInput, O> {
+  (request: ActiveRequest<I, O>, options: IAllRequestOptions): Promise<O>;
 }
 
-export interface IMockOptions<M = any> {
+export interface IAllRequestOptions<M = any> {
   db: M;
   // ...
 }

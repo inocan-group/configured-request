@@ -53,6 +53,7 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
     body: undefined | string;
     bodyType: IApiBodyType;
     axiosOptions: AxiosRequestConfig;
+    isMockRequest: boolean;
     mockConfig: IMockOptions;
 }
 export interface IMockOptions<M = any> {

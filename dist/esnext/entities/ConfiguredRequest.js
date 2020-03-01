@@ -99,11 +99,13 @@ export class ConfiguredRequest {
         return this;
     }
     isMockRequest(options = {}) {
-        return (options.mock ||
+        return options.mock ||
             this._mockConfig.mock ||
             process.env["MOCK_API"] ||
             process.env["VUE_APP_MOCK_API"] ||
-            false);
+            false
+            ? true
+            : false;
     }
     headers(headers) {
         const [staticProps, dynamics, calculations] = this.parseParameters(headers);
@@ -159,17 +161,16 @@ export class ConfiguredRequest {
      */
     async request(props, runTimeOptions = {}) {
         var _a, _b;
-        const request = this.requestInfo(props, runTimeOptions);
-        const isMockRequest = this.isMockRequest(request.mockConfig);
-        const axiosOptions = Object.assign({ headers: request.headers }, request.axiosOptions);
+        const info = this.requestInfo(props, runTimeOptions);
+        const axiosOptions = Object.assign({ headers: info.headers }, info.axiosOptions);
         let result;
         // MOCK or NETWORK REQUEST
         try {
-            if (isMockRequest) {
-                result = await this.mockRequest(request, axiosOptions);
+            if (info.isMockRequest) {
+                result = await this.mockRequest(info, axiosOptions);
             }
             else {
-                result = await this.makeRequest(request, axiosOptions);
+                result = await this.makeRequest(info, axiosOptions);
             }
         }
         catch (e) {
@@ -254,6 +255,7 @@ export class ConfiguredRequest {
             payload: payload,
             bodyType,
             body,
+            isMockRequest: this.isMockRequest(mockConfig) ? true : false,
             mockConfig,
             axiosOptions
         };
@@ -384,6 +386,12 @@ export class ConfiguredRequest {
         });
         return dynamicsHash;
     }
+    /**
+     * **runCalculations**
+     *
+     * Runs all the configured `calc` callbacks to resolve values
+     * for these dynamic properties.
+     */
     runCalculations(apiRequest) {
         const [{ props: request }, config] = extract(apiRequest, ["props"]);
         this._calculations.forEach(calc => {
@@ -398,6 +406,8 @@ export class ConfiguredRequest {
         return [apiRequest.headers, apiRequest.queryParameters];
     }
     /**
+     * **parseParameters**
+     *
      * Separates static properties from dynamic; "dynamic" properties
      * are those produced by a functional symbol export like `dynamic`
      * or `calc`.
