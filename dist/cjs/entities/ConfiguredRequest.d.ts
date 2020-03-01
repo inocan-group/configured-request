@@ -29,7 +29,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IDictionary & {
         mock?: boolean;
-    }): string | boolean;
+    }): boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
     errorHandler(fn: IErrorHandler): this;
     queryParameters(qp: IDictionary): this;

@@ -1,9 +1,15 @@
 import { IConfiguredApiRequest } from "../cr-types";
 import { AxiosResponse } from "axios";
+import { ActiveRequest } from "../entities";
 
-export function fakeAxios<I, O>(
+/**
+ * Takes a response object returned from a mocked function and
+ * places it into a dictionary/hash that looks like an Axios
+ * response.
+ */
+export function fakeAxiosResponse<I, O>(
   response: O,
-  request: IConfiguredApiRequest<I>
+  request: ActiveRequest<I, O, any, any>
 ): AxiosResponse<O> {
   return {
     data: response,

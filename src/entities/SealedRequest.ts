@@ -1,10 +1,5 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import {
-  IRequestInfo,
-  IAllRequestOptions,
-  IApiInput,
-  IErrorHandler
-} from "../cr-types";
+import { IAllRequestOptions, IApiInput, IErrorHandler } from "../cr-types";
 
 export class SealedRequest<I extends IApiInput, O, M = any> {
   private _db: M;

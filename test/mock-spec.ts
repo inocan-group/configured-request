@@ -58,9 +58,9 @@ describe("Mock tests", () => {
       name: string;
       age: number;
     }
-    const mock: IApiMock<IRequest, IResponse> = (req, config) => {
+    const mock: IApiMock<IRequest, IResponse> = req => {
       return {
-        id: req.id,
+        id: req.params.id,
         name: "Roger Dodger",
         age: 14
       };
