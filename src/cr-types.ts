@@ -2,6 +2,7 @@ import { IDictionary, datetime, seconds } from "common-types";
 import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 import { AxiosRequestConfig, AxiosError } from "axios";
 import { ActiveRequest } from "./entities/ActiveRequest";
+import { calc } from "./helpers/calc";
 
 export interface IRequestInfo {
   method: IRequestVerb;
@@ -26,8 +27,7 @@ export enum DynamicStateLocation {
   url = "url",
   queryParameter = "queryParameter",
   header = "header",
-  bodyJson = "bodyJson",
-  bodyForm = "bodyForm"
+  body = "body"
 }
 
 const DEFAULT_HEADERS = {
@@ -62,7 +62,9 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
 export enum ApiBodyType {
   JSON = "JSON",
   formFields = "formFields",
-  literal = "literal",
+  text = "text",
+  html = "html",
+  unknown = "unknown",
   none = "none"
 }
 
@@ -105,13 +107,14 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
    */
   queryParameters: IDictionary<Scalar>;
   /**
-   * the body as a structured dictionary (aka, prior to conversion to a string)
-   */
-  payload: I["body"];
-  /**
    * The stringified body/payload of the message
    */
-  body: undefined | string;
+  payload: undefined | string;
+  /**
+   * the body as a structured dictionary (aka, prior to conversion to a string)
+   */
+
+  body: I["body"];
   /**
    * The structure of the body when parsed
    */
@@ -275,3 +278,11 @@ export type KnownLocation<T> = T & { location: DynamicStateLocation };
 export interface IErrorHandler {
   (fn: AxiosError): false | any;
 }
+
+// TODO: make the typing stronger here
+/**
+ * Allows the value to _also_ equal a function
+ */
+export type CalcOption<T extends IApiInput, K extends keyof T = keyof T> = {
+  [key in keyof T]: T[K] | Function;
+};

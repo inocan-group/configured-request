@@ -21,8 +21,7 @@ export declare enum DynamicStateLocation {
     url = "url",
     queryParameter = "queryParameter",
     header = "header",
-    bodyJson = "bodyJson",
-    bodyForm = "bodyForm"
+    body = "body"
 }
 export declare type Scalar = string | number | boolean;
 export interface IDatedScrape<T> {
@@ -36,7 +35,9 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
 export declare enum ApiBodyType {
     JSON = "JSON",
     formFields = "formFields",
-    literal = "literal",
+    text = "text",
+    html = "html",
+    unknown = "unknown",
     none = "none"
 }
 export declare type IApiBodyType = keyof typeof ApiBodyType;
@@ -49,8 +50,8 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
     url: string;
     headers: IDictionary<Scalar>;
     queryParameters: IDictionary<Scalar>;
-    payload: I["body"];
-    body: undefined | string;
+    payload: undefined | string;
+    body: I["body"];
     bodyType: IApiBodyType;
     axiosOptions: AxiosRequestConfig;
     isMockRequest: boolean;
@@ -114,3 +115,6 @@ export declare type KnownLocation<T> = T & {
 export interface IErrorHandler {
     (fn: AxiosError): false | any;
 }
+export declare type CalcOption<T extends IApiInput, K extends keyof T = keyof T> = {
+    [key in keyof T]: T[K] | Function;
+};

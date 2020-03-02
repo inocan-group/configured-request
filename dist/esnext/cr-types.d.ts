@@ -21,8 +21,7 @@ export declare enum DynamicStateLocation {
     url = "url",
     queryParameter = "queryParameter",
     header = "header",
-    bodyJson = "bodyJson",
-    bodyForm = "bodyForm"
+    body = "body"
 }
 export declare type Scalar = string | number | boolean;
 /**
@@ -46,7 +45,9 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
 export declare enum ApiBodyType {
     JSON = "JSON",
     formFields = "formFields",
-    literal = "literal",
+    text = "text",
+    html = "html",
+    unknown = "unknown",
     none = "none"
 }
 export declare type IApiBodyType = keyof typeof ApiBodyType;
@@ -84,13 +85,13 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
      */
     queryParameters: IDictionary<Scalar>;
     /**
-     * the body as a structured dictionary (aka, prior to conversion to a string)
-     */
-    payload: I["body"];
-    /**
      * The stringified body/payload of the message
      */
-    body: undefined | string;
+    payload: undefined | string;
+    /**
+     * the body as a structured dictionary (aka, prior to conversion to a string)
+     */
+    body: I["body"];
     /**
      * The structure of the body when parsed
      */
@@ -218,3 +219,9 @@ export declare type KnownLocation<T> = T & {
 export interface IErrorHandler {
     (fn: AxiosError): false | any;
 }
+/**
+ * Allows the value to _also_ equal a function
+ */
+export declare type CalcOption<T extends IApiInput, K extends keyof T = keyof T> = {
+    [key in keyof T]: T[K] | Function;
+};

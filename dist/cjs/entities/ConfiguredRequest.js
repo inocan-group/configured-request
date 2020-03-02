@@ -30,8 +30,9 @@ class ConfiguredRequest {
         this._qp = {};
         this._headers = {};
         this._designOptions = {};
-        this._bodyType = "JSON";
+        this._bodyType = index_1.ApiBodyType.JSON;
         this._mockConfig = {};
+        this._formSeparator = "--configured-request-separator--";
         this._dynamics = [];
         this._calculations = [];
         this._mockConfig.networkDelay =
@@ -106,6 +107,52 @@ class ConfiguredRequest {
         this._calculations = shared_1.calculationUpdate(this._calculations, index_1.DynamicStateLocation.queryParameter, calculations);
         return this;
     }
+    body(content) {
+        if (["get", "delete"].includes(this._method)) {
+            throw new errors_1.ConfiguredRequestError(`You can not set body parameters when configuring a ${this._method.toUpperCase()} request!`, "body-not-allowed");
+        }
+        if (![index_1.ApiBodyType.JSON, index_1.ApiBodyType.formFields].includes(this._bodyType)) {
+            throw new errors_1.ConfiguredRequestError(`Only JSON and Multipart Forms can be configured with a body section!`, "body-not-allowed");
+        }
+        const [staticProps, dynamics, calculations] = this.parseParameters(content);
+        this._body = staticProps;
+        this._dynamics = shared_2.dynamicUpdate(this._dynamics, index_1.DynamicStateLocation.body, dynamics);
+        this._calculations = shared_1.calculationUpdate(this._calculations, index_1.DynamicStateLocation.body, calculations);
+        return this;
+    }
+    bodyAsJSON() {
+        this.validateBodyType();
+        this._bodyType = "JSON";
+        return this;
+    }
+    bodyAsMultipartForm(separator) {
+        this.validateBodyType();
+        if (separator) {
+            this._formSeparator = separator;
+        }
+        this._bodyType = "formFields";
+        return this;
+    }
+    bodyAsText() {
+        this.validateBodyType();
+        this._bodyType = "text";
+        return this;
+    }
+    bodyAsHTML() {
+        this.validateBodyType();
+        this._bodyType = "html";
+        return this;
+    }
+    bodyAsUnknown() {
+        this.validateBodyType();
+        this._bodyType = "unknown";
+        return this;
+    }
+    validateBodyType() {
+        if (["get", "delete"].includes(this._method)) {
+            throw new errors_1.ConfiguredRequestError(`You can not state a body type other than NONE for a message using ${this._method.toUpperCase()}`, "invalid-body-type");
+        }
+    }
     mapper(fn) {
         this._mapping = fn;
         return this;
@@ -168,14 +215,24 @@ class ConfiguredRequest {
             }
         })
             .join("");
-        let headers = Object.assign(Object.assign(Object.assign({}, exports.DEFAULT_HEADERS), this._headers), this.getDynamics(index_1.DynamicStateLocation.header, props));
+        const verbHasBody = !["get", "delete"].includes(this._bodyType);
+        const ctLookup = {
+            text: "text/plain",
+            html: "text/html",
+            unknown: "application/octet-stream",
+            JSON: "application/json",
+            formFields: "multipart/form-data"
+        };
+        let headers = Object.assign(Object.assign(Object.assign(Object.assign({}, exports.DEFAULT_HEADERS), (verbHasBody
+            ? { "Content-Type": ctLookup[this._bodyType] }
+            : {})), this._headers), this.getDynamics(index_1.DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)
             ? "none"
             : this._bodyType;
         const templateBody = this._body || {};
         const requestBody = props && props.body ? props.body : {};
-        const payload = Object.assign(Object.assign({}, templateBody), requestBody);
-        const body = shared_1.bodyToString(payload, bodyType);
+        const body = typeof requestBody === "object"
+            ? Object.assign(Object.assign(Object.assign({}, templateBody), requestBody), this.getDynamics(index_1.DynamicStateLocation.body, props)) : requestBody;
         const [mockConfig, axiosOptions] = extract_1.extract(Object.assign(Object.assign(Object.assign({}, this._mockConfig), this._designOptions), runTimeOptions), [
             "mock",
             "networkDelay",
@@ -191,15 +248,14 @@ class ConfiguredRequest {
                 : url,
             headers,
             queryParameters,
-            payload: payload,
+            payload: body ? "" : undefined,
             bodyType,
             body,
             isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
             mockConfig,
             axiosOptions
         };
-        this.runCalculations(apiRequest);
-        return apiRequest;
+        return shared_1.addBodyPayload(this.runCalculations(apiRequest), this._formSeparator);
     }
     seal() {
         return new SealedRequest_1.SealedRequest(this);
@@ -304,8 +360,14 @@ class ConfiguredRequest {
             else if (calc.location === index_1.DynamicStateLocation.header) {
                 apiRequest.headers[calc.prop] = value;
             }
+            else if (calc.location === index_1.DynamicStateLocation.body &&
+                ["JSON", "formFields"].includes(apiRequest.bodyType)) {
+                let b = apiRequest.body;
+                b[calc.prop] = value;
+                apiRequest.body = b;
+            }
         });
-        return [apiRequest.headers, apiRequest.queryParameters];
+        return apiRequest;
     }
     parseParameters(hash) {
         let staticProps = {};
