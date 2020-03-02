@@ -1,5 +1,5 @@
 import { IDictionary, url } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler } from "../index";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler, CalcOption } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
@@ -33,9 +33,9 @@ O extends IApiOutput = IApiOutput,
  */
 X extends IApiIntermediate = IApiIntermediate, 
 /**
- * The type/API for the mocking database, if it is passed in by the run-time environment
+ * The type/data structure for the mocking database, if it is passed in by the run-time environment
  */
-M = any> {
+MDB = any> {
     static authWhitelist: string[];
     static authBlacklist: string[];
     static networkDelay: INetworkDelaySetting;
@@ -46,6 +46,7 @@ M = any> {
     private _body?;
     private _bodyType;
     private _mockConfig;
+    private _formSeparator;
     private _mockFn?;
     private _mapping;
     private _errorHandler;
@@ -58,10 +59,10 @@ M = any> {
      */
     private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
     constructor();
     /**
      * Add a mock function for this API endpoint.
@@ -90,6 +91,23 @@ M = any> {
      * or _dynamic_ parameters (using the `dynamic` symbol export)
      */
     queryParameters(qp: IDictionary): this;
+    /**
+     * Allows setting properties in a JSON or Multipart Form as default values
+     * which can be overwritten at execution time.
+     */
+    body(content: CalcOption<Partial<I["body"]>>): this;
+    /** message body will be sent as a stringified JSON blob */
+    bodyAsJSON(): this;
+    /** message body will be sent as multi-part form fields */
+    bodyAsMultipartForm(separator?: string): this;
+    /** message body will be sent as plain text */
+    bodyAsText(): this;
+    /** message body will be sent as HTML */
+    bodyAsHTML(): this;
+    /** message body is of an unknown type; Content-Type will be set to `application/octet-stream` */
+    bodyAsUnknown(): this;
+    /** validates that only VERBs which _have_ a body can have their body type set */
+    private validateBodyType;
     /**
      * Maps the data returned from the API endpoint. This is _not_ a required feature
      * of the ConfiguredRequest but can be useful in some cases. This function uses
@@ -165,7 +183,8 @@ M = any> {
      * **runCalculations**
      *
      * Runs all the configured `calc` callbacks to resolve values
-     * for these dynamic properties.
+     * for the dynamic properties in the body, headers, and query
+     * parameters.
      */
     private runCalculations;
     /**

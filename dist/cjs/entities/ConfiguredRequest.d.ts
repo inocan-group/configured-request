@@ -1,10 +1,10 @@
 import { IDictionary, url } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler } from "../index";
+import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler, CalcOption } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
-export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any> {
+export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any> {
     static authWhitelist: string[];
     static authBlacklist: string[];
     static networkDelay: INetworkDelaySetting;
@@ -15,22 +15,30 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     private _body?;
     private _bodyType;
     private _mockConfig;
+    private _formSeparator;
     private _mockFn?;
     private _mapping;
     private _errorHandler;
     private _dynamics;
     private _calculations;
     private _method;
-    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
-    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, M = any>(url: string): ConfiguredRequest<I, O, X, M>;
+    static get<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static post<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static put<I extends IApiInputWithBody = IApiInputWithBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
+    static delete<I extends IApiInputWithoutBody = IApiInputWithoutBody, O extends IApiOutput = IApiOutput, X extends IApiIntermediate = IApiIntermediate, MDB = any>(url: string): ConfiguredRequest<I, O, X, MDB>;
     constructor();
     mockFn(fn: IApiMock<I, O>): this;
     isMockRequest(options?: IAllRequestOptions): boolean;
     headers(headers: IDictionary<string | number | boolean | Function>): this;
     errorHandler(fn: IErrorHandler): this;
     queryParameters(qp: IDictionary): this;
+    body(content: CalcOption<Partial<I["body"]>>): this;
+    bodyAsJSON(): this;
+    bodyAsMultipartForm(separator?: string): this;
+    bodyAsText(): this;
+    bodyAsHTML(): this;
+    bodyAsUnknown(): this;
+    private validateBodyType;
     mapper(fn: (input: X) => O): this;
     request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
     options(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">): this;

@@ -1,4 +1,4 @@
-export * from "./bodyToString";
+export * from "./addBodyPayload";
 export * from "./calculationUpdate";
 export * from "./dynamicUpdate";
 export * from "./extract";

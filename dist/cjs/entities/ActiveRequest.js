@@ -20,7 +20,7 @@ class ActiveRequest {
         return this.requestInfo().url;
     }
     get body() {
-        return this.requestInfo().payload;
+        return this.requestInfo().body;
     }
     get method() {
         return this.requestInfo().method;
@@ -44,7 +44,7 @@ class ActiveRequest {
         return this._configuredRequest.requestInfo(this.params, this._options);
     }
     toString() {
-        return this.method + " " + this.url;
+        return this.method.toUpperCase() + " " + this.url;
     }
     toJSON() {
         return {

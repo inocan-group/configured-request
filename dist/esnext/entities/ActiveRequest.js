@@ -52,7 +52,7 @@ export class ActiveRequest {
      * type.
      */
     get body() {
-        return this.requestInfo().payload;
+        return this.requestInfo().body;
     }
     /**
      * The HTTP request VERB for the request (aka, `get`, `put`, etc.)
@@ -103,7 +103,7 @@ export class ActiveRequest {
         return this._configuredRequest.requestInfo(this.params, this._options);
     }
     toString() {
-        return this.method + " " + this.url;
+        return this.method.toUpperCase() + " " + this.url;
     }
     toJSON() {
         return {

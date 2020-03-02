@@ -1,6 +1,6 @@
 import { HttpStatusCodes, wait } from "common-types";
-import { DynamicStateLocation, isDynamicProp, ActiveRequest } from "../index";
-import { calculationUpdate, bodyToString, fakeAxiosResponse, between } from "../shared";
+import { DynamicStateLocation, isDynamicProp, ActiveRequest, ApiBodyType } from "../index";
+import { calculationUpdate, addBodyPayload, fakeAxiosResponse, between } from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios from "axios";
@@ -32,8 +32,9 @@ export class ConfiguredRequest {
         this._qp = {};
         this._headers = {};
         this._designOptions = {};
-        this._bodyType = "JSON";
+        this._bodyType = ApiBodyType.JSON;
         this._mockConfig = {};
+        this._formSeparator = "--configured-request-separator--";
         /**
          * The various _dynamic_ aspects of the API call
          */
@@ -141,6 +142,62 @@ export class ConfiguredRequest {
         return this;
     }
     /**
+     * Allows setting properties in a JSON or Multipart Form as default values
+     * which can be overwritten at execution time.
+     */
+    body(content) {
+        if (["get", "delete"].includes(this._method)) {
+            throw new ConfiguredRequestError(`You can not set body parameters when configuring a ${this._method.toUpperCase()} request!`, "body-not-allowed");
+        }
+        if (![ApiBodyType.JSON, ApiBodyType.formFields].includes(this._bodyType)) {
+            throw new ConfiguredRequestError(`Only JSON and Multipart Forms can be configured with a body section!`, "body-not-allowed");
+        }
+        const [staticProps, dynamics, calculations] = this.parseParameters(content);
+        this._body = staticProps;
+        this._dynamics = dynamicUpdate(this._dynamics, DynamicStateLocation.body, dynamics);
+        this._calculations = calculationUpdate(this._calculations, DynamicStateLocation.body, calculations);
+        return this;
+    }
+    /** message body will be sent as a stringified JSON blob */
+    bodyAsJSON() {
+        this.validateBodyType();
+        this._bodyType = "JSON";
+        return this;
+    }
+    /** message body will be sent as multi-part form fields */
+    bodyAsMultipartForm(separator) {
+        this.validateBodyType();
+        if (separator) {
+            this._formSeparator = separator;
+        }
+        this._bodyType = "formFields";
+        return this;
+    }
+    /** message body will be sent as plain text */
+    bodyAsText() {
+        this.validateBodyType();
+        this._bodyType = "text";
+        return this;
+    }
+    /** message body will be sent as HTML */
+    bodyAsHTML() {
+        this.validateBodyType();
+        this._bodyType = "html";
+        return this;
+    }
+    /** message body is of an unknown type; Content-Type will be set to `application/octet-stream` */
+    bodyAsUnknown() {
+        this.validateBodyType();
+        this._bodyType = "unknown";
+        return this;
+    }
+    /** validates that only VERBs which _have_ a body can have their body type set */
+    validateBodyType() {
+        if (["get", "delete"].includes(this._method)) {
+            throw new ConfiguredRequestError(`You can not state a body type other than NONE for a message using ${this._method.toUpperCase()}`, "invalid-body-type");
+        }
+    }
+    /**
      * Maps the data returned from the API endpoint. This is _not_ a required feature
      * of the ConfiguredRequest but can be useful in some cases. This function uses
      * the fluent style and returns a reference to the ConfiguredRequest.
@@ -228,14 +285,24 @@ export class ConfiguredRequest {
             }
         })
             .join("");
-        let headers = Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), this._headers), this.getDynamics(DynamicStateLocation.header, props));
+        const verbHasBody = !["get", "delete"].includes(this._bodyType);
+        const ctLookup = {
+            text: "text/plain",
+            html: "text/html",
+            unknown: "application/octet-stream",
+            JSON: "application/json",
+            formFields: "multipart/form-data"
+        };
+        let headers = Object.assign(Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), (verbHasBody
+            ? { "Content-Type": ctLookup[this._bodyType] }
+            : {})), this._headers), this.getDynamics(DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)
             ? "none"
             : this._bodyType;
         const templateBody = this._body || {};
         const requestBody = props && props.body ? props.body : {};
-        const payload = Object.assign(Object.assign({}, templateBody), requestBody);
-        const body = bodyToString(payload, bodyType);
+        const body = typeof requestBody === "object"
+            ? Object.assign(Object.assign(Object.assign({}, templateBody), requestBody), this.getDynamics(DynamicStateLocation.body, props)) : requestBody;
         const [mockConfig, axiosOptions] = extract(Object.assign(Object.assign(Object.assign({}, this._mockConfig), this._designOptions), runTimeOptions), [
             "mock",
             "networkDelay",
@@ -251,15 +318,14 @@ export class ConfiguredRequest {
                 : url,
             headers,
             queryParameters,
-            payload: payload,
+            payload: body ? "" : undefined,
             bodyType,
             body,
             isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
             mockConfig,
             axiosOptions
         };
-        this.runCalculations(apiRequest);
-        return apiRequest;
+        return addBodyPayload(this.runCalculations(apiRequest), this._formSeparator);
     }
     /**
      * Seals the configuration of the API endpoint and returns
@@ -390,7 +456,8 @@ export class ConfiguredRequest {
      * **runCalculations**
      *
      * Runs all the configured `calc` callbacks to resolve values
-     * for these dynamic properties.
+     * for the dynamic properties in the body, headers, and query
+     * parameters.
      */
     runCalculations(apiRequest) {
         const [{ props: request }, config] = extract(apiRequest, ["props"]);
@@ -402,8 +469,14 @@ export class ConfiguredRequest {
             else if (calc.location === DynamicStateLocation.header) {
                 apiRequest.headers[calc.prop] = value;
             }
+            else if (calc.location === DynamicStateLocation.body &&
+                ["JSON", "formFields"].includes(apiRequest.bodyType)) {
+                let b = apiRequest.body;
+                b[calc.prop] = value;
+                apiRequest.body = b;
+            }
         });
-        return [apiRequest.headers, apiRequest.queryParameters];
+        return apiRequest;
     }
     /**
      * **parseParameters**
