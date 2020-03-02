@@ -25,11 +25,21 @@ describe("BODY requests", () => {
     });
 
     expect(response.bodyType).to.equal("JSON");
-    expect(response.payload).to.be.an("object");
-    expect(response.body).to.be.a("string");
-    expect(response.payload.name).to.equal(body.name);
-    expect(response.body)
-      .to.include("name")
-      .and.to.include("Bob");
+    expect(response.body).to.be.an("object");
+    expect(response.payload).to.be.a("string");
+    expect(response.body.name).to.equal(body.name);
+  });
+
+  it("POST request with calculated and dynamic values in body of configuration is brought into request body", async () => {
+    interface IRequest {
+      body: {
+        name: string;
+        age: number;
+        gender: string;
+        ageGroup: string;
+      };
+    }
+    const API = ConfiguredRequest.post<IRequest>("https://test.com/people")
+      .body;
   });
 });

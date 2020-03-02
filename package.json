@@ -1,6 +1,6 @@
 {
   "name": "configured-request",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "configured-request",
   "license": "MIT",
   "repository": "https://github.com/inocan-group/configured-request",
@@ -23,10 +23,6 @@
     "invoke": "yarn do invoke ",
     "deploy": "yarn do deploy ",
     "package": "yarn do package ",
-    "help": "yarn do --help",
-    "coverage": "nyc --reporter=html _mocha --require ts-node/register 'test/**/*-spec.ts' && open coverage/index.html",
-    "coverage:coveralls": "nyc --reporter=text-lcov _mocha --require ts-node/register 'test/**/*-spec.ts' | coveralls",
-    "coverage:codecov": "nyc _mocha --reporter=json --require ts-node/register 'test/**/*-spec.ts' > coverage/coverage.json",
     "watch": "tsc -w"
   },
   "devDependencies": {
@@ -79,6 +75,6 @@
     "common-types": "^1.13.0",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "query-string": "^6.11.0"
+    "query-string": "ksnyde/query-string#master"
   }
 }

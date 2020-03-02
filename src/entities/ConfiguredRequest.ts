@@ -17,7 +17,7 @@ import {
 } from "../index";
 import {
   calculationUpdate,
-  bodyToString,
+  addBodyPayload,
   fakeAxiosResponse,
   between
 } from "../shared";
@@ -74,9 +74,9 @@ export class ConfiguredRequest<
    */
   X extends IApiIntermediate = IApiIntermediate,
   /**
-   * The type/API for the mocking database, if it is passed in by the run-time environment
+   * The type/data structure for the mocking database, if it is passed in by the run-time environment
    */
-  M = any
+  MDB = any
 > {
   // Static props which serve as defaults for new instances
   public static authWhitelist: string[];
@@ -90,7 +90,8 @@ export class ConfiguredRequest<
   private _body?: I["body"];
   private _bodyType: IApiBodyType = "JSON";
   private _mockConfig: IMockOptions = {};
-  private _mockFn?: IApiMock<I, O, M>;
+  private _formSeparator: string = "--configured-request-separator--";
+  private _mockFn?: IApiMock<I, O, MDB>;
   private _mapping: (input: X) => O;
   private _errorHandler: IErrorHandler;
   /**
@@ -111,9 +112,9 @@ export class ConfiguredRequest<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IApiOutput = IApiOutput,
     X extends IApiIntermediate = IApiIntermediate,
-    M = any
+    MDB = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X, M>();
+    const obj = new ConfiguredRequest<I, O, X, MDB>();
     obj._method = "get";
     obj.setUrl(url);
     return obj;
@@ -122,9 +123,9 @@ export class ConfiguredRequest<
     I extends IApiInputWithBody = IApiInputWithBody,
     O extends IApiOutput = IApiOutput,
     X extends IApiIntermediate = IApiIntermediate,
-    M = any
+    MDB = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X, M>();
+    const obj = new ConfiguredRequest<I, O, X, MDB>();
     obj._method = "post";
     obj.setUrl(url);
     return obj;
@@ -133,9 +134,9 @@ export class ConfiguredRequest<
     I extends IApiInputWithBody = IApiInputWithBody,
     O extends IApiOutput = IApiOutput,
     X extends IApiIntermediate = IApiIntermediate,
-    M = any
+    MDB = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X, M>();
+    const obj = new ConfiguredRequest<I, O, X, MDB>();
     obj._method = "put";
     obj.setUrl(url);
     return obj;
@@ -144,9 +145,9 @@ export class ConfiguredRequest<
     I extends IApiInputWithoutBody = IApiInputWithoutBody,
     O extends IApiOutput = IApiOutput,
     X extends IApiIntermediate = IApiIntermediate,
-    M = any
+    MDB = any
   >(url: string) {
-    const obj = new ConfiguredRequest<I, O, X, M>();
+    const obj = new ConfiguredRequest<I, O, X, MDB>();
     obj._method = "delete";
     obj.setUrl(url);
     return obj;
@@ -258,6 +259,50 @@ export class ConfiguredRequest<
     return this;
   }
 
+  /** message body will be sent as a stringified JSON blob */
+  bodyAsJSON() {
+    this.validateBodyType();
+    this._bodyType = "JSON";
+    return this;
+  }
+  /** message body will be sent as multi-part form fields */
+  bodyAsMultipartForm(separator?: string) {
+    this.validateBodyType();
+    if (separator) {
+      this._formSeparator = separator;
+    }
+    this._bodyType = "formFields";
+    return this;
+  }
+  /** message body will be sent as plain text */
+  bodyAsText() {
+    this.validateBodyType();
+    this._bodyType = "text";
+    return this;
+  }
+  /** message body will be sent as HTML */
+  bodyAsHTML() {
+    this.validateBodyType();
+    this._bodyType = "html";
+    return this;
+  }
+  /** message body is of an unknown type; Content-Type will be set to `application/octet-stream` */
+  bodyAsUnknown() {
+    this.validateBodyType();
+    this._bodyType = "unknown";
+    return this;
+  }
+
+  /** validates that only VERBs which _have_ a body can have their body type set */
+  private validateBodyType() {
+    if (["get", "delete"].includes(this._method)) {
+      throw new ConfiguredRequestError(
+        `You can not state a body type other than NONE for a message using ${this._method.toUpperCase()}`,
+        "invalid-body-type"
+      );
+    }
+  }
+
   /**
    * Maps the data returned from the API endpoint. This is _not_ a required feature
    * of the ConfiguredRequest but can be useful in some cases. This function uses
@@ -363,8 +408,20 @@ export class ConfiguredRequest<
       })
       .join("");
 
+    const verbHasBody = !["get", "delete"].includes(this._bodyType);
+    const ctLookup = {
+      text: "text/plain",
+      html: "text/html",
+      unknown: "application/octet-stream",
+      JSON: "application/json",
+      formFields: "multipart/form-data"
+    };
+
     let headers = {
       ...DEFAULT_HEADERS,
+      ...(verbHasBody
+        ? { "Content-Type": ctLookup[this._bodyType as keyof typeof ctLookup] }
+        : {}),
       ...this._headers,
       ...this.getDynamics(DynamicStateLocation.header, props)
     };
@@ -375,8 +432,10 @@ export class ConfiguredRequest<
 
     const templateBody = this._body || {};
     const requestBody = props && props.body ? props.body : {};
-    const payload = { ...templateBody, ...requestBody };
-    const body = bodyToString(payload, bodyType);
+    const body =
+      typeof requestBody === "object"
+        ? { ...templateBody, ...requestBody }
+        : requestBody;
 
     const [mockConfig, axiosOptions] = extract<
       IMockOptions,
@@ -389,7 +448,7 @@ export class ConfiguredRequest<
       "db"
     ]);
 
-    const apiRequest = {
+    const apiRequest: IConfiguredApiRequest<I> = {
       props: props as I,
       method: this._method,
       url: hasQueryParameters
@@ -397,7 +456,7 @@ export class ConfiguredRequest<
         : url,
       headers,
       queryParameters,
-      payload: payload as I["body"],
+      payload: body ? "" : undefined, // defined below
       bodyType,
       body,
       isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
@@ -405,9 +464,10 @@ export class ConfiguredRequest<
       axiosOptions
     };
 
-    this.runCalculations(apiRequest);
-
-    return apiRequest;
+    return addBodyPayload<I>(
+      this.runCalculations(apiRequest),
+      this._formSeparator
+    );
   }
 
   /**
@@ -577,9 +637,12 @@ export class ConfiguredRequest<
    * **runCalculations**
    *
    * Runs all the configured `calc` callbacks to resolve values
-   * for these dynamic properties.
+   * for the dynamic properties in the body, headers, and query
+   * parameters.
    */
-  private runCalculations(apiRequest: IConfiguredApiRequest<I>) {
+  private runCalculations(
+    apiRequest: IConfiguredApiRequest<I>
+  ): IConfiguredApiRequest<I> {
     const [{ props: request }, config] = extract<
       I,
       Omit<IConfiguredApiRequest<I>, "props">,
@@ -592,9 +655,16 @@ export class ConfiguredRequest<
         apiRequest.queryParameters[calc.prop] = value;
       } else if (calc.location === DynamicStateLocation.header) {
         apiRequest.headers[calc.prop] = value;
+      } else if (
+        calc.location === DynamicStateLocation.body &&
+        ["JSON", "formFields"].includes(apiRequest.bodyType)
+      ) {
+        let b: I["body"] & IDictionary = apiRequest.body;
+        b[calc.prop] = value;
+        apiRequest.body = b;
       }
     });
-    return [apiRequest.headers, apiRequest.queryParameters];
+    return apiRequest;
   }
 
   /**

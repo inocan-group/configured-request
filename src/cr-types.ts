@@ -26,8 +26,7 @@ export enum DynamicStateLocation {
   url = "url",
   queryParameter = "queryParameter",
   header = "header",
-  bodyJson = "bodyJson",
-  bodyForm = "bodyForm"
+  body = "body"
 }
 
 const DEFAULT_HEADERS = {
@@ -62,7 +61,9 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
 export enum ApiBodyType {
   JSON = "JSON",
   formFields = "formFields",
-  literal = "literal",
+  text = "text",
+  html = "html",
+  unknown = "unknown",
   none = "none"
 }
 
@@ -105,13 +106,14 @@ export interface IConfiguredApiRequest<I extends IApiInput> {
    */
   queryParameters: IDictionary<Scalar>;
   /**
-   * the body as a structured dictionary (aka, prior to conversion to a string)
-   */
-  payload: I["body"];
-  /**
    * The stringified body/payload of the message
    */
-  body: undefined | string;
+  payload: undefined | string;
+  /**
+   * the body as a structured dictionary (aka, prior to conversion to a string)
+   */
+
+  body: I["body"];
   /**
    * The structure of the body when parsed
    */

@@ -21,7 +21,7 @@ whenever you need them. This library sets up all static aspects of the API endpo
 - url
 - query-parameters
 - headers
-- and request body (_in cases outside of a **GET** request_)
+- and request body (_for verbs which support it_)
 
 It also allows you to creatively state where all of the _dynamic_ aspects of the request are located across URL,
 query-parameters, and the body and let consumers pass these dynamic attributes in as they see fit. As an example,
@@ -85,48 +85,83 @@ That's a quick summary of the top line features. We will now go into greater det
 
 ## Basic Config
 
-The `.queryParameters()` method was demonstrated in the example above but you also get:
+The job of configuration is all about stating _static_, _dynamic_, and _calculated_ properties that are involved in the API endpoint. These properties can exist in any of the locations which RESTful API's store them: headers, query parameters, the URL, and the message body. The previous example showed how we might configure the query parameters and as you'll see, the other "state locations" follow a very similar approach.
 
-- `headers(h: IDictionary)`
+### Headers
 
-      Pass in your own dictionary of name/value pairings which you want to add to the _headers_ of the API request. The configuration -- just like the queryParameters -- can include both static values and dynamic ones (_via use of the `dynamic` symbol exported by this repo_). A typical example might include:
+> `API.headers(h: IDictionary) { ... }`
 
-      ```typescript
-      export API = ConfigureRequest.get<IRequest, IResponse>(URL)
-        .headers({
-          ...dynamic( (v: string) => ['Authorization', `Bearer ${v}`, true`] ),
-          Store: 'abd34234-234234'
-        })
-      ```
+Pass in your own dictionary of name/value pairings which you want to add to the _headers_ of the API request. The configuration -- just like the queryParameters -- can include both static values and dynamic properties. A very common thing to see in the headers of an API endpoints is the requirement that you pass in a Bearer Token. With this in mind, let's show how this might be done where the caller of this API is asked to include the property `token` and that is in turn placed into the correct place in the headers array.
 
-      Here we see:
+```typescript
+export API = ConfigureRequest.get<IRequest, IResponse>(URL)
+  .headers({
+    Authorization: calc( params => `Bearer ${params.token}` ),
+    Store: 'abd34234-234234'
+  })
+```
 
-      - a different way of leveraging the `dynamic` function (which will be covered in more detail in the next section),
-      - a static setting of the header variable `Store`
+Here we see:
 
-- `body(content: I["body"] | LiteralBody )`
+- that at run-time we convert the `token` input into a bearer token and put into the header array
+- the header array, takes on a static value for the key of `Store`
 
-      In **POST** and **PUT** messages it is typical that most of the data that you are passing to the API endpoint is a JSON object of data. This means that _typically_ you would NOT configure the body until you're ready to make the request but if there is a reason to you can do it.
+### Body
 
-      Probably the most useful use-case would be to setup default properties for your consumers. For that reason, if a value _is_ set, it will deep merge this _body_ definition with whatever is provided at request time (giving request time precedence).
+> `API.body(content: I["body"] ) { ... }`
 
-      There are two other considerations worth mentioning:
+In **POST** and **PUT** messages it is typical that most of the data that you are passing to the API endpoint is a JSON object of data. In these cases, you want strong typing for the body of the message but the values are likely less of a _configuration-time_ concern and more of a _execution time_ concern. If this is your situation then just make sure that the input typing for the `ConfiguredRequest` (aka, `<I>`) includes the appropriate typing for the `body` property and consumers who execute queries then will benefit from the typing (aka, at "design time" for the consumer). In this case, you don't need to use the `.body()` method to do anything during configuration.
 
-      1. **Body Structure** - it is assumed by default that the body _payload_ will be a JSON blob but that is not always the case and if you need to change this to a different type you should configure this with `.bodyType()`. The _bodyType_ will allow you to choose between JSON, Form Fields, and "literal". In all cases, the value passed into `body()` should be a dictionary of some sort.
-      2. **Typing for the body** - unlike other _dynamic_ properties show up in your request interface under the property name, the _payload_ or message body is always defined as `payload` on the request interface. So if you were defining a POST request with a payload of `{ id: string, price: number }` this would be done like so:
+If you _do_ want to setup defaults for values in the JSON payload or inject some calculations into the body of the message than you can do this and the approach is similar to what we've done so far.
 
-          ```typescript
-          export interface IRequest {
-            body: { id: string, price: number }
-          }
-          export API = ConfigureRequest.post<IRequest, IResponse>(URL);
-          ```
+To illustrate, let's imagine the case where we have an interface for an `OrderList` endpoint, where `OrderList` gives us all orders for a particular day and by default we will have it use today's date. Also, we allow for _limiting_ the total records we get back as well as providing an _offset_ so that we can page through the results. It might be more typical that the limit and offsets be stated as query parameters, and it is _definitely_ more common to use the GET verb but this particular 3rd party has decided to use POST and are putting all state into the body of the message.
 
-      If we had wanted to change the _bodyType_ to a Form Field that wouldn't change the typing part of the equation as both JSON and Form Fields benefit from having input be provided via a strongly typed dictionary. In both _bodyType's_ the dictionary would be converted to a string based variable before being sent over the wire.
+Yeah we may think _poorly_ of 3rd parties but we can't control them (a shame really). Plus, let's be honest, if our fictional 3rd party were using GET we'd have no BODY anyway and our example would make no sense. :)
 
-      > **Note:** the last _bodyType_ is "literal" (which would be very rare); if you need to use this type we would ask that you use the `literal` export from this repo: `.body(literal('abcd'))`
+```typescript
+import { format } from 'date-fns';
+export interface IRequest {
+  page?: number;
+  body: {
+    limit: number;
+    offset: number;
+    day: string;
+  }
+}
+export OrderList = ConfigureRequest.get('http://bad-third-party.com/v1/order-list')
+  .body({
+    limit: 50,
+    offset: calc( params => params.page ? params.page * 50 : 0),
+    day: calc( () => format(new Date(), 'yyyy-MM-dd') )
+  })
+```
 
-We have now covered the primary aspects of "state" that you might want to configure for an API endpoint, however, we were a bit _implicit_ about the URL itself as that is another area where we often see important state being conveyed. So, let's get explicit about the URL.
+In our example you'll see that the required properties for the **body** are either static or calculated. This means that if a consumer of this configured were to pass in no body at execution time, all required properties of the interface would still be met. If they wanted to pass in a `page` property then it would adjust the `offset` property accordingly. This gives gives us a nice set of defaults and if at execution time there's a need to pass in another `day` that is achieved with:
+
+```typescript
+const response = await OrderList.request({ body: { day } });
+```
+
+This will ensure that the caller's `day` value overrights the default for `day` but the other default values are persisted.
+
+#### Body Structure / Content Type
+
+Up to now we've assumed that the BODY of the message will be delivered as a JSON object _stringified_. That is overwhelming the most common configuration, but there are exceptions. `ConfiguredRequest` supports the following structures:
+
+1. **JSON** <br/>
+   The default type and no additional configuration is needed. Using this ensures the `Content-Type` in the header is set to **application/json** and will ensure the structured object that is input is converted to a string notation before being sent over the wire.
+
+2. **Multipart Forms** <br/>
+   Multipart Forms are undoubtedly the second most common means of sending data for a POST/PUT request and it's format originates from the need for an HTML page to be able to post form data directly to an endpoint without the need for code to format the request for us. Whereas JSON is more comfortable for code, Multi-part Forms are comfortable to HTML. In order to state that the body is a multipart form you just use `API.bodyAsMultipartForm()` in the configuration. This will set the `Content-Type` header to **application/x-www-form-urlencoded** as well as ensure that the dictionary/hash object input is converted to this form structure before being sent over the wire.
+
+3. **Text** <br/>
+   If the body content being sent is plain text then you can state this with `API.bodyAsPlainText()` and the `Content-Type` will be set to **text/plain**. If the body content passed in at execution time is _not_ a string a `configured-request/invalid-body` error will be thrown.
+
+4. **HTML** <br/>
+   If the body content being sent is HTML then you can state this with `API.bodyAsHTML()` and the `Content-Type` will be set to **text/html**. If the body content passed in at execution time is _not_ a string a `configured-request/invalid-body` error will be thrown.
+
+5. **Unknown** <br/>
+   If the body of the message is neither JSON nor a Multi-Part Form then the remaining option is to call `API.bodyAsUnknown()`. This will require that you transform the body into a string payload yourself and pass it in as a string blob. This will set the `Content-Type` to **application/octet-stream** (which you can override in the headers config if you wish).
 
 ### The URL
 
@@ -145,6 +180,8 @@ In all cases the expression of a _dynamic_ property in the URL is notated by enc
 In the second and third examples, the dynamic property name is followed by a colon and the _default value_ for the dynamic property. This is more clear in the third example as the default value of "v1" stands out but in the second example the default value is also being stated but in this case the default value is _undefined_.
 
 When a dynamic URL property has a default value it is considered _optional_ and can be left off of the actual network request.
+
+## Dynamic Behavior
 
 ### The `dynamic` symbol
 
