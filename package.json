@@ -72,7 +72,7 @@
   },
   "dependencies": {
     "axios": "^0.19.2",
-    "common-types": "^1.13.0",
+    "common-types": "^1.13.1",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
     "query-string": "ksnyde/query-string#master"

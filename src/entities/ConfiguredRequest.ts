@@ -1,4 +1,10 @@
-import { IDictionary, url, HttpStatusCodes, wait } from "common-types";
+import {
+  IDictionary,
+  url,
+  HttpStatusCodes,
+  wait,
+  CallbackOption
+} from "common-types";
 import {
   DynamicStateLocation,
   IDynamicProperty,
@@ -13,7 +19,9 @@ import {
   IApiIntermediate,
   IDynamicSymbolOutput,
   IErrorHandler,
-  ActiveRequest
+  ActiveRequest,
+  ApiBodyType,
+  CalcOption
 } from "../index";
 import {
   calculationUpdate,
@@ -88,7 +96,7 @@ export class ConfiguredRequest<
   private _designOptions: IDictionary = {};
   private _url: string;
   private _body?: I["body"];
-  private _bodyType: IApiBodyType = "JSON";
+  private _bodyType: IApiBodyType = ApiBodyType.JSON;
   private _mockConfig: IMockOptions = {};
   private _formSeparator: string = "--configured-request-separator--";
   private _mockFn?: IApiMock<I, O, MDB>;
@@ -254,6 +262,43 @@ export class ConfiguredRequest<
     this._calculations = calculationUpdate<I, O>(
       this._calculations,
       DynamicStateLocation.queryParameter,
+      calculations
+    );
+    return this;
+  }
+
+  /**
+   * Allows setting properties in a JSON or Multipart Form as default values
+   * which can be overwritten at execution time.
+   */
+  body(content: CalcOption<Partial<I["body"]>>) {
+    if (["get", "delete"].includes(this._method)) {
+      throw new ConfiguredRequestError(
+        `You can not set body parameters when configuring a ${this._method.toUpperCase()} request!`,
+        "body-not-allowed"
+      );
+    }
+    if (
+      ![ApiBodyType.JSON, ApiBodyType.formFields].includes(
+        this._bodyType as ApiBodyType
+      )
+    ) {
+      throw new ConfiguredRequestError(
+        `Only JSON and Multipart Forms can be configured with a body section!`,
+        "body-not-allowed"
+      );
+    }
+    const [staticProps, dynamics, calculations] = this.parseParameters(content);
+    this._body = staticProps;
+    this._dynamics = dynamicUpdate<I, O>(
+      this._dynamics,
+      DynamicStateLocation.body,
+      dynamics
+    );
+
+    this._calculations = calculationUpdate<I, O>(
+      this._calculations,
+      DynamicStateLocation.body,
       calculations
     );
     return this;
@@ -434,7 +479,11 @@ export class ConfiguredRequest<
     const requestBody = props && props.body ? props.body : {};
     const body =
       typeof requestBody === "object"
-        ? { ...templateBody, ...requestBody }
+        ? {
+            ...templateBody,
+            ...requestBody,
+            ...this.getDynamics(DynamicStateLocation.body, props)
+          }
         : requestBody;
 
     const [mockConfig, axiosOptions] = extract<

@@ -1,4 +1,3 @@
-import { IDictionary } from "common-types";
 import { IConfiguredApiRequest } from "../cr-types";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
@@ -27,6 +26,7 @@ export function addBodyPayload<I>(
     case "none":
       payload = undefined;
       break;
+
     default:
       throw new ConfiguredRequestError(
         `Unknown body type: ${request.bodyType}`,
@@ -35,11 +35,4 @@ export function addBodyPayload<I>(
   }
 
   return { ...request, payload };
-}
-
-function ff(body: IDictionary): string {
-  return Object.keys(body).reduce((formFields: string, key: string) => {
-    formFields += `${key}:"${body[key]}"\n`;
-    return formFields;
-  }, "");
 }

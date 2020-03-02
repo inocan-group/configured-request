@@ -2,6 +2,7 @@ import { IDictionary, datetime, seconds } from "common-types";
 import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 import { AxiosRequestConfig, AxiosError } from "axios";
 import { ActiveRequest } from "./entities/ActiveRequest";
+import { calc } from "./helpers/calc";
 
 export interface IRequestInfo {
   method: IRequestVerb;
@@ -277,3 +278,11 @@ export type KnownLocation<T> = T & { location: DynamicStateLocation };
 export interface IErrorHandler {
   (fn: AxiosError): false | any;
 }
+
+// TODO: make the typing stronger here
+/**
+ * Allows the value to _also_ equal a function
+ */
+export type CalcOption<T extends IApiInput, K extends keyof T = keyof T> = {
+  [key in keyof T]: T[K] | Function;
+};
