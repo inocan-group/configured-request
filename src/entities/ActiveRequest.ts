@@ -68,7 +68,7 @@ export class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
    * type.
    */
   get body(): I["body"] {
-    return this.requestInfo().payload;
+    return this.requestInfo().body;
   }
 
   /**
@@ -129,7 +129,7 @@ export class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
   }
 
   toString() {
-    return this.method + " " + this.url;
+    return this.method.toUpperCase() + " " + this.url;
   }
 
   toJSON() {
