@@ -158,31 +158,28 @@ class ConfiguredRequest {
         return this;
     }
     async request(requestProps, runTimeOptions = {}) {
-        var _a, _b;
         const request = new index_1.ActiveRequest(requestProps, runTimeOptions, this);
         let result;
-        try {
-            if (request.isMockRequest) {
-                result = await this.mockRequest(request);
-            }
-            else {
-                result = await this.makeRequest(request);
-            }
-        }
-        catch (e) {
+        const errHandler = (e) => {
             if (this._errorHandler) {
                 const handlerOutcome = this._errorHandler(e);
                 if (handlerOutcome === false)
                     throw e;
-                result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
+                return Object.assign(Object.assign({}, e), { data: handlerOutcome });
             }
             else {
                 throw e;
             }
+        };
+        if (request.isMockRequest) {
+            result = await this.mockRequest(request).catch(errHandler);
+        }
+        else {
+            result = await this.makeRequest(request).catch(errHandler);
         }
         return this._mapping
-            ? this._mapping((_a = result) === null || _a === void 0 ? void 0 : _a.data)
-            : (_b = result) === null || _b === void 0 ? void 0 : _b.data;
+            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+            : result === null || result === void 0 ? void 0 : result.data;
     }
     options(opts) {
         this._designOptions = opts;

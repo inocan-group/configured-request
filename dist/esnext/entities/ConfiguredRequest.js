@@ -217,33 +217,30 @@ export class ConfiguredRequest {
      * with any options which were included in `_designOptions`.
      */
     async request(requestProps, runTimeOptions = {}) {
-        var _a, _b;
         const request = new ActiveRequest(requestProps, runTimeOptions, this);
         let result;
-        // MOCK or NETWORK REQUEST
-        try {
-            if (request.isMockRequest) {
-                result = await this.mockRequest(request);
-            }
-            else {
-                result = await this.makeRequest(request);
-            }
-        }
-        catch (e) {
+        const errHandler = (e) => {
             if (this._errorHandler) {
                 const handlerOutcome = this._errorHandler(e);
                 if (handlerOutcome === false)
                     throw e;
-                result = Object.assign(Object.assign({}, e), { data: handlerOutcome });
+                return Object.assign(Object.assign({}, e), { data: handlerOutcome });
             }
             else {
                 throw e;
             }
+        };
+        // MOCK or NETWORK REQUEST
+        if (request.isMockRequest) {
+            result = await this.mockRequest(request).catch(errHandler);
+        }
+        else {
+            result = await this.makeRequest(request).catch(errHandler);
         }
         // OPTIONALLY MAP, ALWAYS RETURN
         return this._mapping
-            ? this._mapping((_a = result) === null || _a === void 0 ? void 0 : _a.data)
-            : (_b = result) === null || _b === void 0 ? void 0 : _b.data;
+            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+            : result === null || result === void 0 ? void 0 : result.data;
     }
     /**
      * If there are Axios request options which you which to pass along for every request

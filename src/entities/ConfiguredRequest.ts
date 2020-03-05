@@ -1,10 +1,4 @@
-import {
-  IDictionary,
-  url,
-  HttpStatusCodes,
-  wait,
-  CallbackOption
-} from "common-types";
+import { IDictionary, url, HttpStatusCodes, wait } from "common-types";
 import {
   DynamicStateLocation,
   IDynamicProperty,
@@ -31,7 +25,7 @@ import {
 } from "../shared";
 import { ConfiguredRequestError } from "../errors";
 import * as queryString from "query-string";
-import axios, { AxiosResponse, AxiosRequestConfig, AxiosError } from "axios";
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
 import {
   IApiBodyType,
@@ -373,24 +367,23 @@ export class ConfiguredRequest<
     const request = new ActiveRequest(requestProps, runTimeOptions, this);
 
     let result: AxiosResponse<O>;
-
-    // MOCK or NETWORK REQUEST
-    try {
-      if (request.isMockRequest) {
-        result = await this.mockRequest(request);
-      } else {
-        result = await this.makeRequest(request);
-      }
-    } catch (e) {
+    const errHandler = (e: any) => {
       if (this._errorHandler) {
         const handlerOutcome = this._errorHandler(e);
-
         if (handlerOutcome === false) throw e;
 
-        result = { ...e, data: handlerOutcome };
+        return { ...e, data: handlerOutcome };
       } else {
         throw e;
       }
+    };
+
+    // MOCK or NETWORK REQUEST
+
+    if (request.isMockRequest) {
+      result = await this.mockRequest(request).catch(errHandler);
+    } else {
+      result = await this.makeRequest(request).catch(errHandler);
     }
 
     // OPTIONALLY MAP, ALWAYS RETURN
