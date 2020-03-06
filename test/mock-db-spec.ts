@@ -59,4 +59,44 @@ describe("Mocks with database access", async () => {
       throw e;
     }
   });
+
+  it("mock database available to mock function when using useMockDatabase()", async () => {
+    const testMockFn: IApiMock<any, any, any> = async (request, options) => {
+      expect(request.isMockRequest).to.equal(true);
+      expect(request.mockDb).to.not.equal(undefined);
+      const person = await Record.get(
+        Person,
+        request.queryParameters.id as string,
+        { db: request.mockDb }
+      );
+
+      return person.data;
+    };
+
+    try {
+      const db = await DB.connect({
+        mocking: true,
+        mockData: { people: arrayToHash(people) }
+      });
+
+      type IRequest = { id: string };
+      const MyRequest = ConfiguredRequest.get<IRequest, Person>(
+        "https://foo.bar"
+      )
+        .queryParameters({
+          id: dynamic(undefined, true)
+        })
+        .mockFn(testMockFn)
+        .seal();
+
+      MyRequest.useMockDatabase(db);
+      const response = await MyRequest.mock({
+        id: people.find(i => i.name === "Joe").id
+      });
+
+      expect(response.age).to.equal(44);
+    } catch (e) {
+      throw e;
+    }
+  });
 });

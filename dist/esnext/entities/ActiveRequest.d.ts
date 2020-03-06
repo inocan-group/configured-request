@@ -1,5 +1,5 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IAllRequestOptions, IApiInput } from "../cr-types";
+import { IAllRequestOptions, IApiInput, ISerializedRequest } from "../cr-types";
 /**
  * **ActiveRequest**
  *
@@ -9,6 +9,7 @@ import { IAllRequestOptions, IApiInput } from "../cr-types";
  * to Axios too; mainly for consistency sake as it quite quickly
  */
 export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
+    static deserialize(instance: ISerializedRequest): ActiveRequest<any, any, any, any>;
     private _db;
     private _options;
     private _configuredRequest;
@@ -27,6 +28,13 @@ export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
      * an "active request"
      */
     get params(): I;
+    /**
+     * serializes data properties for an active request; to _de-serialize_
+     * use the ActiveRequest's `deserialize` static method. Note that you'll
+     * need to pass in both this serialized data along with the constructor
+     * for the underlying `SealedRequest`.
+     */
+    get serialize(): ISerializedRequest;
     /**
      * the _headers_ being sent out as part of the request
      */

@@ -7,8 +7,20 @@ class ActiveRequest {
         this._options = options;
         this._configuredRequest = configuredRequest;
     }
+    static deserialize(instance) {
+        const request = JSON.parse(instance.data);
+        const cr = new instance.constructor();
+        return new ActiveRequest(request.params, request.options, cr);
+    }
     get params() {
         return this._params;
+    }
+    get serialize() {
+        return {
+            data: JSON.stringify(Object.assign(Object.assign({}, this.requestInfo()), { params: this._params, options: this._options })),
+            constructor: this._configuredRequest
+                .constructor
+        };
     }
     get headers() {
         return this.requestInfo().headers;

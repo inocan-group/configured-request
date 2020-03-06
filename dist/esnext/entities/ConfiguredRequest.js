@@ -224,7 +224,7 @@ export class ConfiguredRequest {
                 const handlerOutcome = this._errorHandler(e);
                 if (handlerOutcome === false)
                     throw e;
-                return Object.assign(Object.assign({}, e), { data: handlerOutcome });
+                return Object.assign(Object.assign({}, e), { data: handlerOutcome, request: request.serialize.data });
             }
             else {
                 throw e;

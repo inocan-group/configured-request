@@ -1,12 +1,14 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IAllRequestOptions, IApiInput } from "../cr-types";
+import { IAllRequestOptions, IApiInput, ISerializedRequest } from "../cr-types";
 export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
+    static deserialize(instance: ISerializedRequest): ActiveRequest<any, any, any, any>;
     private _db;
     private _options;
     private _configuredRequest;
     private _params;
     constructor(params: I, options: IAllRequestOptions, configuredRequest: ConfiguredRequest<I, O, X, M>);
     get params(): I;
+    get serialize(): ISerializedRequest;
     get headers(): import("common-types").IDictionary<string | number | boolean>;
     get queryParameters(): import("common-types").IDictionary<string | number | boolean>;
     get url(): string;
