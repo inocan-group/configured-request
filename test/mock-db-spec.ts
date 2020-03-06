@@ -26,7 +26,7 @@ describe("Mocks with database access", async () => {
         mockData: { people: arrayToHash(people) }
       });
       Record.defaultDb = db;
-      const mock: IApiMock<any, any, any> = async (request, options) => {
+      const mock: IApiMock<any, any, any> = async request => {
         expect(request.isMockRequest).to.equal(true);
         expect(request.mockDb).to.not.equal(undefined);
         const person = await Record.get(
@@ -61,7 +61,7 @@ describe("Mocks with database access", async () => {
   });
 
   it("mock database available to mock function when using useMockDatabase()", async () => {
-    const testMockFn: IApiMock<any, any, any> = async (request, options) => {
+    const testMockFn: IApiMock<any, any, any> = async request => {
       expect(request.isMockRequest).to.equal(true);
       expect(request.mockDb).to.not.equal(undefined);
       const person = await Record.get(

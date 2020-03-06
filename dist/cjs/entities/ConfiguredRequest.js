@@ -171,15 +171,29 @@ class ConfiguredRequest {
                 throw e;
             }
         };
+        let makeRequest;
         if (request.isMockRequest) {
-            result = await this.mockRequest(request).catch(errHandler);
+            makeRequest = this.mockRequest.bind(this);
         }
         else {
-            result = await this.makeRequest(request).catch(errHandler);
+            makeRequest = this.realRequest.bind(this);
         }
-        return this._mapping
+        result = await makeRequest(request).catch((e) => {
+            const activeError = new errors_1.ActiveRequestError(e, "on-request", request);
+            const handled = this._errorHandler
+                ? this._errorHandler(activeError)
+                : false;
+            if (handled) {
+                return handled;
+            }
+            else {
+                throw activeError;
+            }
+        });
+        const finalResult = this._mapping && typeof result === "object" && result.data
             ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
             : result === null || result === void 0 ? void 0 : result.data;
+        return finalResult;
     }
     options(opts) {
         this._designOptions = opts;
@@ -313,7 +327,7 @@ class ConfiguredRequest {
             throw new errors_1.ConfiguredRequestError(e.message || `Problem running the mock API request to ${request.url}`, "invalid-mock-call", e.httpStatusCode || common_types_1.HttpStatusCodes.BadRequest);
         }
     }
-    async makeRequest(request) {
+    async realRequest(request) {
         const options = Object.assign(Object.assign({}, request.axiosOptions), { headers: request.headers });
         const { url, body } = request;
         switch (this._method) {

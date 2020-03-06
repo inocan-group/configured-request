@@ -23,7 +23,11 @@ import {
   fakeAxiosResponse,
   between
 } from "../shared";
-import { ConfiguredRequestError } from "../errors";
+import {
+  ConfiguredRequestError,
+  ActiveRequestError,
+  IGeneralizedError
+} from "../errors";
 import * as queryString from "query-string";
 import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
@@ -365,31 +369,59 @@ export class ConfiguredRequest<
    */
   async request(requestProps?: I, runTimeOptions: IAllRequestOptions = {}) {
     const request = new ActiveRequest(requestProps, runTimeOptions, this);
+    try {
+      let result: AxiosResponse<O>;
+      const errHandler = (e: any) => {
+        if (this._errorHandler) {
+          const handlerOutcome = this._errorHandler(e);
+          if (handlerOutcome === false) throw e;
 
-    let result: AxiosResponse<O>;
-    const errHandler = (e: any) => {
-      if (this._errorHandler) {
-        const handlerOutcome = this._errorHandler(e);
-        if (handlerOutcome === false) throw e;
+          return {
+            ...e,
+            data: handlerOutcome,
+            request: request.serialize.data
+          };
+        } else {
+          throw e;
+        }
+      };
 
-        return { ...e, data: handlerOutcome, request: request.serialize.data };
+      // MOCK or NETWORK REQUEST
+      let makeRequest;
+      if (request.isMockRequest) {
+        makeRequest = this.mockRequest.bind(this);
       } else {
-        throw e;
+        makeRequest = this.realRequest.bind(this);
       }
-    };
 
-    // MOCK or NETWORK REQUEST
+      result = await makeRequest(request).catch((e: IGeneralizedError) => {
+        return this.handleOrThrowError(e, "on-request", request);
+      });
 
-    if (request.isMockRequest) {
-      result = await this.mockRequest(request).catch(errHandler);
-    } else {
-      result = await this.makeRequest(request).catch(errHandler);
+      // OPTIONALLY MAP, ALWAYS RETURN
+      const finalResult =
+        this._mapping && typeof result === "object" && result.data
+          ? this._mapping((result?.data as unknown) as X)
+          : result?.data;
+
+      return finalResult;
+    } catch (e) {
+      return this.handleOrThrowError(e, "surrounding-request", request);
     }
+  }
 
-    // OPTIONALLY MAP, ALWAYS RETURN
-    return this._mapping
-      ? this._mapping((result?.data as unknown) as X)
-      : result?.data;
+  private handleOrThrowError(
+    e: IGeneralizedError,
+    location: string,
+    request?: ActiveRequest<I, O>
+  ) {
+    const err = ActiveRequestError.wrap(e, location, request);
+    const handler = this._errorHandler ? this._errorHandler : () => false;
+    const handled = handler(err);
+
+    if (!handled) throw err;
+
+    return handled;
   }
 
   /**
@@ -625,7 +657,7 @@ export class ConfiguredRequest<
    * @param url The URL including query parameters
    * @param options Axios options to pass along to the request
    */
-  private async makeRequest(request: ActiveRequest<I, O, any, any>) {
+  private async realRequest(request: ActiveRequest<I, O, any, any>) {
     const options = { ...request.axiosOptions, headers: request.headers };
     const { url, body } = request;
 

@@ -7,15 +7,36 @@ export class SealedRequest {
      */
     async request(props, options = {}) {
         let response;
+        const isMockRequest = this.requestInfo(props, options).isMockRequest;
+        if (isMockRequest && this._db) {
+            options = Object.assign({ db: this._db }, options);
+        }
         try {
             response = await this.req.request(props, options);
+            this.req.errorHandler(undefined); // reset error
         }
         catch (e) {
             this.req.errorHandler(undefined); // reset error
             throw e;
         }
-        this.req.errorHandler(undefined); // reset error
         return response;
+    }
+    /**
+     * **useMockDatabase**
+     *
+     * If you want to pass in a mock database which
+     * will be used for all _mock_ requests (and be
+     * passed to mock functions as context) you may pass
+     * it in here.
+     *
+     * This property will be _not_ be used when making a real
+     * network request.
+     *
+     * @param db any database mocking API
+     */
+    useMockDatabase(db) {
+        this._db = db;
+        return this;
     }
     /**
      * Make a request to the **Mock** API.
@@ -24,7 +45,7 @@ export class SealedRequest {
      * API then this will throw a `mock-not-ready` error.
      */
     async mock(props, options = {}) {
-        return this.req.request(props, Object.assign(Object.assign({}, options), { mock: true }));
+        return this.request(props, Object.assign(Object.assign({}, options), { mock: true }));
     }
     /**
      * Get information about the API request structure, given

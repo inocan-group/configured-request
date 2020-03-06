@@ -31,7 +31,7 @@ export interface IDatedScrape<T> {
     data: T;
 }
 export interface IApiMock<I extends IApiInput, O, M = any> {
-    (request: ActiveRequest<I, O, any, M>, options?: IMockOptions<M>): O | Promise<O>;
+    (request: ActiveRequest<I, O, any, M>): O | Promise<O>;
 }
 export declare enum ApiBodyType {
     JSON = "JSON",

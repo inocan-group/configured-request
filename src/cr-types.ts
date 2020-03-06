@@ -54,8 +54,7 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
      * The active request's information passed in as an instance of
      * `ActiveRequest` class.
      */
-    request: ActiveRequest<I, O, any, M>,
-    options?: IMockOptions<M>
+    request: ActiveRequest<I, O, any, M>
   ): O | Promise<O>;
 }
 

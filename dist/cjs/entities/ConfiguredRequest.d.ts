@@ -54,7 +54,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     };
     protected setUrl(url: url): this;
     private mockRequest;
-    private makeRequest;
+    private realRequest;
     private getDynamics;
     private runCalculations;
     private parseParameters;

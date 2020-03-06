@@ -1,7 +1,7 @@
 import { HttpStatusCodes, wait } from "common-types";
 import { DynamicStateLocation, isDynamicProp, ActiveRequest, ApiBodyType } from "../index";
 import { calculationUpdate, addBodyPayload, fakeAxiosResponse, between } from "../shared";
-import { ConfiguredRequestError } from "../errors";
+import { ConfiguredRequestError, ActiveRequestError } from "../errors";
 import * as queryString from "query-string";
 import axios from "axios";
 import { SealedRequest } from "./SealedRequest";
@@ -231,16 +231,30 @@ export class ConfiguredRequest {
             }
         };
         // MOCK or NETWORK REQUEST
+        let makeRequest;
         if (request.isMockRequest) {
-            result = await this.mockRequest(request).catch(errHandler);
+            makeRequest = this.mockRequest.bind(this);
         }
         else {
-            result = await this.makeRequest(request).catch(errHandler);
+            makeRequest = this.realRequest.bind(this);
         }
+        result = await makeRequest(request).catch((e) => {
+            const activeError = new ActiveRequestError(e, "on-request", request);
+            const handled = this._errorHandler
+                ? this._errorHandler(activeError)
+                : false;
+            if (handled) {
+                return handled;
+            }
+            else {
+                throw activeError;
+            }
+        });
         // OPTIONALLY MAP, ALWAYS RETURN
-        return this._mapping
+        const finalResult = this._mapping && typeof result === "object" && result.data
             ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
             : result === null || result === void 0 ? void 0 : result.data;
+        return finalResult;
     }
     /**
      * If there are Axios request options which you which to pass along for every request
@@ -407,7 +421,7 @@ export class ConfiguredRequest {
      * @param url The URL including query parameters
      * @param options Axios options to pass along to the request
      */
-    async makeRequest(request) {
+    async realRequest(request) {
         const options = Object.assign(Object.assign({}, request.axiosOptions), { headers: request.headers });
         const { url, body } = request;
         switch (this._method) {

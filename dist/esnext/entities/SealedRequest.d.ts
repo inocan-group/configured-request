@@ -9,6 +9,20 @@ export declare class SealedRequest<I extends IApiInput, O, M = any> {
      */
     request(props?: I, options?: IAllRequestOptions): Promise<O>;
     /**
+     * **useMockDatabase**
+     *
+     * If you want to pass in a mock database which
+     * will be used for all _mock_ requests (and be
+     * passed to mock functions as context) you may pass
+     * it in here.
+     *
+     * This property will be _not_ be used when making a real
+     * network request.
+     *
+     * @param db any database mocking API
+     */
+    useMockDatabase(db: M): this;
+    /**
      * Make a request to the **Mock** API.
      *
      * Note: if there is no mock function configured for this
