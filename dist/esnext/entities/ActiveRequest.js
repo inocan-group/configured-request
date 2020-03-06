@@ -21,12 +21,30 @@ export class ActiveRequest {
         this._options = options;
         this._configuredRequest = configuredRequest;
     }
+    static deserialize(instance) {
+        const request = JSON.parse(instance.data);
+        const cr = new instance.constructor();
+        return new ActiveRequest(request.params, request.options, cr);
+    }
     /**
      * The active parameters passed into the request to make it
      * an "active request"
      */
     get params() {
         return this._params;
+    }
+    /**
+     * serializes data properties for an active request; to _de-serialize_
+     * use the ActiveRequest's `deserialize` static method. Note that you'll
+     * need to pass in both this serialized data along with the constructor
+     * for the underlying `SealedRequest`.
+     */
+    get serialize() {
+        return {
+            data: JSON.stringify(Object.assign(Object.assign({}, this.requestInfo()), { params: this._params, options: this._options })),
+            constructor: this._configuredRequest
+                .constructor
+        };
     }
     /**
      * the _headers_ being sent out as part of the request

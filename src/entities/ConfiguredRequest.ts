@@ -372,7 +372,7 @@ export class ConfiguredRequest<
         const handlerOutcome = this._errorHandler(e);
         if (handlerOutcome === false) throw e;
 
-        return { ...e, data: handlerOutcome };
+        return { ...e, data: handlerOutcome, request: request.serialize.data };
       } else {
         throw e;
       }

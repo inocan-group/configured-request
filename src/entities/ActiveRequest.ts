@@ -1,5 +1,11 @@
 import { ConfiguredRequest } from "./ConfiguredRequest";
-import { IAllRequestOptions, IApiInput, IErrorHandler } from "../cr-types";
+import {
+  IAllRequestOptions,
+  IApiInput,
+  IErrorHandler,
+  ISerializedRequest,
+  ISerializedRequestConstructor
+} from "../cr-types";
 import { ConfiguredRequestError } from "../errors";
 
 /**
@@ -11,6 +17,12 @@ import { ConfiguredRequestError } from "../errors";
  * to Axios too; mainly for consistency sake as it quite quickly
  */
 export class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
+  static deserialize(instance: ISerializedRequest) {
+    const request = JSON.parse(instance.data);
+    const cr = new instance.constructor();
+    return new ActiveRequest(request.params, request.options, cr);
+  }
+
   private _db: M;
   private _options: IAllRequestOptions;
   private _configuredRequest: ConfiguredRequest<I, O, X, M>;
@@ -39,6 +51,24 @@ export class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
    */
   get params() {
     return this._params;
+  }
+
+  /**
+   * serializes data properties for an active request; to _de-serialize_
+   * use the ActiveRequest's `deserialize` static method. Note that you'll
+   * need to pass in both this serialized data along with the constructor
+   * for the underlying `SealedRequest`.
+   */
+  get serialize(): ISerializedRequest {
+    return {
+      data: JSON.stringify({
+        ...this.requestInfo(),
+        params: this._params,
+        options: this._options
+      }),
+      constructor: this._configuredRequest
+        .constructor as ISerializedRequestConstructor<any>
+    };
   }
 
   /**

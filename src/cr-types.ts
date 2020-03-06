@@ -286,3 +286,23 @@ export interface IErrorHandler {
 export type CalcOption<T extends IApiInput, K extends keyof T = keyof T> = {
   [key in keyof T]: T[K] | Function;
 };
+
+export interface ISerializedRequest<
+  T extends ConfiguredRequest<any, any, any, any> = ConfiguredRequest<
+    any,
+    any,
+    any,
+    any
+  >
+> {
+  /** the `ActiveRequests` state serialized to a string */
+  data: string;
+  /** the `ConfiguredRequest` constructor */
+  constructor: ISerializedRequestConstructor<T>;
+}
+
+export interface ISerializedRequestConstructor<
+  T extends ConfiguredRequest<any, any, any, any>
+> {
+  new (): ConfiguredRequest<any, any, any, any>;
+}
