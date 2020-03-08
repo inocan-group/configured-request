@@ -217,44 +217,37 @@ export class ConfiguredRequest {
      * with any options which were included in `_designOptions`.
      */
     async request(requestProps, runTimeOptions = {}) {
-        const request = new ActiveRequest(requestProps, runTimeOptions, this);
-        let result;
-        const errHandler = (e) => {
-            if (this._errorHandler) {
-                const handlerOutcome = this._errorHandler(e);
-                if (handlerOutcome === false)
-                    throw e;
-                return Object.assign(Object.assign({}, e), { data: handlerOutcome, request: request.serialize.data });
+        const req = new ActiveRequest(requestProps, runTimeOptions, this);
+        try {
+            let result;
+            // MOCK or NETWORK REQUEST
+            let makeRequest;
+            if (req.isMockRequest) {
+                makeRequest = this.mockRequest.bind(this);
             }
             else {
-                throw e;
+                makeRequest = this.realRequest.bind(this);
             }
-        };
-        // MOCK or NETWORK REQUEST
-        let makeRequest;
-        if (request.isMockRequest) {
-            makeRequest = this.mockRequest.bind(this);
+            result = await makeRequest(req).catch((e) => {
+                return this.handleOrThrowError(e, "on-request", req);
+            });
+            // OPTIONALLY MAP, ALWAYS RETURN
+            const finalResult = this._mapping && typeof result === "object" && result.data
+                ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+                : result === null || result === void 0 ? void 0 : result.data;
+            return finalResult;
         }
-        else {
-            makeRequest = this.realRequest.bind(this);
+        catch (e) {
+            return this.handleOrThrowError(e, "surrounding-request", req);
         }
-        result = await makeRequest(request).catch((e) => {
-            const activeError = new ActiveRequestError(e, "on-request", request);
-            const handled = this._errorHandler
-                ? this._errorHandler(activeError)
-                : false;
-            if (handled) {
-                return handled;
-            }
-            else {
-                throw activeError;
-            }
-        });
-        // OPTIONALLY MAP, ALWAYS RETURN
-        const finalResult = this._mapping && typeof result === "object" && result.data
-            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
-            : result === null || result === void 0 ? void 0 : result.data;
-        return finalResult;
+    }
+    handleOrThrowError(e, location, request) {
+        const err = ActiveRequestError.wrap(e, location, request);
+        const handler = this._errorHandler ? this._errorHandler : () => false;
+        const handled = handler(err);
+        if (!handled)
+            throw err;
+        return handled;
     }
     /**
      * If there are Axios request options which you which to pass along for every request

@@ -50,6 +50,13 @@ export class ActiveRequestError extends Error {
             this.name = `active-request/${this.httpStatusCode !== -1 ? this.httpStatusCode : this.code}`;
         }
     }
+    /**
+     * Wraps an underlying error with a `ActiveRequestError`
+     *
+     * @param e the underlying error
+     * @param location the location of the catch block to better isolate where the error occurred
+     * @param request the `ActiveRequest` object which defines the request
+     */
     static wrap(e, location, request) {
         return new ActiveRequestError(e, location, request);
     }

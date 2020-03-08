@@ -367,35 +367,28 @@ export class ConfiguredRequest<
    * @param options any Axios options which you want to pass along; this will be combined
    * with any options which were included in `_designOptions`.
    */
-  async request(requestProps?: I, runTimeOptions: IAllRequestOptions = {}) {
-    const request = new ActiveRequest(requestProps, runTimeOptions, this);
+  async request(
+    requestProps?: I,
+    runTimeOptions: IAllRequestOptions = {}
+  ): Promise<O> {
+    const req = new ActiveRequest<I, O, X, MDB>(
+      requestProps,
+      runTimeOptions,
+      this
+    );
     try {
       let result: AxiosResponse<O>;
-      const errHandler = (e: any) => {
-        if (this._errorHandler) {
-          const handlerOutcome = this._errorHandler(e);
-          if (handlerOutcome === false) throw e;
-
-          return {
-            ...e,
-            data: handlerOutcome,
-            request: request.serialize.data
-          };
-        } else {
-          throw e;
-        }
-      };
 
       // MOCK or NETWORK REQUEST
       let makeRequest;
-      if (request.isMockRequest) {
+      if (req.isMockRequest) {
         makeRequest = this.mockRequest.bind(this);
       } else {
         makeRequest = this.realRequest.bind(this);
       }
 
-      result = await makeRequest(request).catch((e: IGeneralizedError) => {
-        return this.handleOrThrowError(e, "on-request", request);
+      result = await makeRequest(req).catch((e: IGeneralizedError) => {
+        return this.handleOrThrowError(e, "on-request", req);
       });
 
       // OPTIONALLY MAP, ALWAYS RETURN
@@ -406,7 +399,7 @@ export class ConfiguredRequest<
 
       return finalResult;
     } catch (e) {
-      return this.handleOrThrowError(e, "surrounding-request", request);
+      return this.handleOrThrowError(e, "surrounding-request", req);
     }
   }
 

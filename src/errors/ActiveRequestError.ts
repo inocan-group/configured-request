@@ -20,6 +20,13 @@ export type IGeneralizedError = (IDictionary & Error) | AxiosError;
  * block (presumably with a different "location" property) this error will return the original error.
  */
 export class ActiveRequestError extends Error {
+  /**
+   * Wraps an underlying error with a `ActiveRequestError`
+   *
+   * @param e the underlying error
+   * @param location the location of the catch block to better isolate where the error occurred
+   * @param request the `ActiveRequest` object which defines the request
+   */
   static wrap(
     e: IGeneralizedError,
     location: string,

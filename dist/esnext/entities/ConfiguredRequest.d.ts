@@ -125,6 +125,7 @@ MDB = any> {
      * with any options which were included in `_designOptions`.
      */
     request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
+    private handleOrThrowError;
     /**
      * If there are Axios request options which you which to pass along for every request
      * you can do that by setting them here. Note that each request can also send options
