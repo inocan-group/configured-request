@@ -158,28 +158,35 @@ class ConfiguredRequest {
         return this;
     }
     async request(requestProps, runTimeOptions = {}) {
-        const request = new index_1.ActiveRequest(requestProps, runTimeOptions, this);
-        let result;
-        const errHandler = (e) => {
-            if (this._errorHandler) {
-                const handlerOutcome = this._errorHandler(e);
-                if (handlerOutcome === false)
-                    throw e;
-                return Object.assign(Object.assign({}, e), { data: handlerOutcome, request: request.serialize.data });
+        const req = new index_1.ActiveRequest(requestProps, runTimeOptions, this);
+        try {
+            let result;
+            let makeRequest;
+            if (req.isMockRequest) {
+                makeRequest = this.mockRequest.bind(this);
             }
             else {
-                throw e;
+                makeRequest = this.realRequest.bind(this);
             }
-        };
-        if (request.isMockRequest) {
-            result = await this.mockRequest(request).catch(errHandler);
+            result = await makeRequest(req).catch((e) => {
+                return this.handleOrThrowError(e, "on-request", req);
+            });
+            const finalResult = this._mapping && typeof result === "object" && result.data
+                ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+                : result === null || result === void 0 ? void 0 : result.data;
+            return finalResult;
         }
-        else {
-            result = await this.makeRequest(request).catch(errHandler);
+        catch (e) {
+            return this.handleOrThrowError(e, "surrounding-request", req);
         }
-        return this._mapping
-            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
-            : result === null || result === void 0 ? void 0 : result.data;
+    }
+    handleOrThrowError(e, location, request) {
+        const err = errors_1.ActiveRequestError.wrap(e, location, request);
+        const handler = this._errorHandler ? this._errorHandler : () => false;
+        const handled = handler(err);
+        if (!handled)
+            throw err;
+        return handled;
     }
     options(opts) {
         this._designOptions = opts;
@@ -313,7 +320,7 @@ class ConfiguredRequest {
             throw new errors_1.ConfiguredRequestError(e.message || `Problem running the mock API request to ${request.url}`, "invalid-mock-call", e.httpStatusCode || common_types_1.HttpStatusCodes.BadRequest);
         }
     }
-    async makeRequest(request) {
+    async realRequest(request) {
         const options = Object.assign(Object.assign({}, request.axiosOptions), { headers: request.headers });
         const { url, body } = request;
         switch (this._method) {

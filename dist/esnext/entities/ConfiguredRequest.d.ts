@@ -125,6 +125,7 @@ MDB = any> {
      * with any options which were included in `_designOptions`.
      */
     request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
+    private handleOrThrowError;
     /**
      * If there are Axios request options which you which to pass along for every request
      * you can do that by setting them here. Note that each request can also send options
@@ -170,7 +171,7 @@ MDB = any> {
      * @param url The URL including query parameters
      * @param options Axios options to pass along to the request
      */
-    private makeRequest;
+    private realRequest;
     /**
      * Gets the _dynamic_ properties for a given location (aka, headers, query params).
      * If a dynamic property is not

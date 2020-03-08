@@ -41,6 +41,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     private validateBodyType;
     mapper(fn: (input: X) => O): this;
     request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
+    private handleOrThrowError;
     options(opts: Omit<AxiosRequestConfig, "headers" | "method" | "url">): this;
     requestInfo(props?: Partial<I>, runTimeOptions?: IAllRequestOptions): IConfiguredApiRequest<I>;
     seal(): SealedRequest<I, O>;
@@ -54,7 +55,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     };
     protected setUrl(url: url): this;
     private mockRequest;
-    private makeRequest;
+    private realRequest;
     private getDynamics;
     private runCalculations;
     private parseParameters;

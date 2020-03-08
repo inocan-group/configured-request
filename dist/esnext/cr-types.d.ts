@@ -41,7 +41,7 @@ export interface IApiMock<I extends IApiInput, O, M = any> {
      * The active request's information passed in as an instance of
      * `ActiveRequest` class.
      */
-    request: ActiveRequest<I, O, any, M>, options?: IMockOptions<M>): O | Promise<O>;
+    request: ActiveRequest<I, O, any, M>): O | Promise<O>;
 }
 export declare enum ApiBodyType {
     JSON = "JSON",
