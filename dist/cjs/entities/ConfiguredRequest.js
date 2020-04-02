@@ -20,6 +20,7 @@ const SealedRequest_1 = require("./SealedRequest");
 const cr_types_1 = require("../cr-types");
 const extract_1 = require("../shared/extract");
 const shared_2 = require("../shared");
+const lodash_get_1 = __importDefault(require("lodash.get"));
 exports.DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
     "Cache-Control": "no-cache",
@@ -153,14 +154,18 @@ class ConfiguredRequest {
             throw new errors_1.ConfiguredRequestError(`You can not state a body type other than NONE for a message using ${this._method.toUpperCase()}`, "invalid-body-type");
         }
     }
+    unwrap(offsetPath) {
+        this._unwrap = offsetPath;
+        return this;
+    }
     mapper(fn) {
         this._mapping = fn;
         return this;
     }
     async request(requestProps, runTimeOptions = {}) {
         const req = new index_1.ActiveRequest(requestProps, runTimeOptions, this);
+        let result;
         try {
-            let result;
             let makeRequest;
             if (req.isMockRequest) {
                 makeRequest = this.mockRequest.bind(this);
@@ -168,17 +173,18 @@ class ConfiguredRequest {
             else {
                 makeRequest = this.realRequest.bind(this);
             }
-            result = await makeRequest(req).catch((e) => {
-                return this.handleOrThrowError(e, "on-request", req);
-            });
-            const finalResult = this._mapping && typeof result === "object" && result.data
-                ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
-                : result === null || result === void 0 ? void 0 : result.data;
-            return finalResult;
+            result = await makeRequest(req);
         }
         catch (e) {
-            return this.handleOrThrowError(e, "surrounding-request", req);
+            result = this.handleOrThrowError(e, "surrounding-request", req);
         }
+        result.data = this._unwrap
+            ? lodash_get_1.default(result.data, this._unwrap)
+            : result.data;
+        const finalResult = this._mapping && typeof result === "object" && result.data
+            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+            : result === null || result === void 0 ? void 0 : result.data;
+        return finalResult;
     }
     handleOrThrowError(e, location, request) {
         const err = errors_1.ActiveRequestError.wrap(e, location, request);
@@ -186,7 +192,14 @@ class ConfiguredRequest {
         const handled = handler(err);
         if (!handled)
             throw err;
-        return handled;
+        return {
+            request: {},
+            statusText: `An error was handled by the ConfiguredRequest handler [${e.message}]`,
+            headers: (request === null || request === void 0 ? void 0 : request.headers) || {},
+            config: (request === null || request === void 0 ? void 0 : request.axiosOptions) || {},
+            status: common_types_1.HttpStatusCodes.Accepted,
+            data: handled
+        };
     }
     options(opts) {
         this._designOptions = opts;
@@ -244,21 +257,11 @@ class ConfiguredRequest {
             "authBlacklist",
             "db"
         ]);
-        const apiRequest = {
-            props: props,
-            method: this._method,
-            url: hasQueryParameters
+        const apiRequest = Object.assign(Object.assign({ props: props, method: this._method, url: hasQueryParameters
                 ? url + "?" + queryString.stringify(queryParameters)
-                : url,
-            headers,
-            queryParameters,
-            payload: body ? "" : undefined,
-            bodyType,
-            body,
-            isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
-            mockConfig,
-            axiosOptions
-        };
+                : url, headers,
+            queryParameters, payload: body ? "" : undefined, bodyType,
+            body, isMockRequest: this.isMockRequest(runTimeOptions) ? true : false, mockConfig }, (this._unwrap ? { unwrap: this._unwrap } : {})), { axiosOptions });
         return shared_1.addBodyPayload(this.runCalculations(apiRequest), this._formSeparator);
     }
     seal() {

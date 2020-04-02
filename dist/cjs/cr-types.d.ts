@@ -80,8 +80,7 @@ export interface IApiInputWithoutBody extends IDictionary {
     body?: undefined;
 }
 export declare type IApiInput = IApiInputWithBody | IApiInputWithoutBody;
-export interface IApiOutput extends IDictionary {
-}
+export declare type IApiOutput = any;
 export interface IApiIntermediate extends IDictionary {
 }
 export interface IDynamicCalculator<I extends IApiInput, O extends Object> {
@@ -100,7 +99,7 @@ export interface IBaseSymbolOutput<O extends IApiOutput> {
     symbol: DynamicSymbol;
     prop: string & keyof O;
 }
-export interface IDynamicSymbolOutput<V = Scalar, O extends object = {}> extends IBaseSymbolOutput<O> {
+export interface IDynamicSymbolOutput<V = Scalar, O = {}> extends IBaseSymbolOutput<O> {
     symbol: DynamicSymbol.dynamic;
     defaultValue: V;
     required: boolean;

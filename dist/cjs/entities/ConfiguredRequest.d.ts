@@ -17,6 +17,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     private _mockConfig;
     private _formSeparator;
     private _mockFn?;
+    private _unwrap?;
     private _mapping;
     private _errorHandler;
     private _dynamics;
@@ -39,6 +40,7 @@ export declare class ConfiguredRequest<I extends IApiInput, O extends IApiOutput
     bodyAsHTML(): this;
     bodyAsUnknown(): this;
     private validateBodyType;
+    unwrap(offsetPath: string): this;
     mapper(fn: (input: X) => O): this;
     request(requestProps?: I, runTimeOptions?: IAllRequestOptions): Promise<O>;
     private handleOrThrowError;

@@ -48,6 +48,8 @@ MDB = any> {
     private _mockConfig;
     private _formSeparator;
     private _mockFn?;
+    /** a dot-path used to unwrap the API response */
+    private _unwrap?;
     private _mapping;
     private _errorHandler;
     /**
@@ -108,6 +110,17 @@ MDB = any> {
     bodyAsUnknown(): this;
     /** validates that only VERBs which _have_ a body can have their body type set */
     private validateBodyType;
+    /**
+     * **unwrap**
+     *
+     * If you always want to reach _into_ the resulting data structure for the results then you
+     * can state a "dot-path" to the beginning of the "real" payload that you're interested in.
+     *
+     * This -- in essence -- provides a type of "mapper" that is very common for API _unwrapping_ an
+     * API response. What is important to know is that this unwrapping, if configured, will happen
+     * _before_ it is passed to a mapping function that may optionally be provided.
+     */
+    unwrap(offsetPath: string): this;
     /**
      * Maps the data returned from the API endpoint. This is _not_ a required feature
      * of the ConfiguredRequest but can be useful in some cases. This function uses

@@ -43,6 +43,7 @@ import {
 } from "../cr-types";
 import { extract } from "../shared/extract";
 import { dynamicUpdate } from "../shared";
+import get from "lodash.get";
 
 export const DEFAULT_HEADERS: IDictionary<string> = {
   "User-Agent":
@@ -98,6 +99,8 @@ export class ConfiguredRequest<
   private _mockConfig: IMockOptions = {};
   private _formSeparator: string = "--configured-request-separator--";
   private _mockFn?: IApiMock<I, O, MDB>;
+  /** a dot-path used to unwrap the API response */
+  private _unwrap?: string;
   private _mapping: (input: X) => O;
   private _errorHandler: IErrorHandler;
   /**
@@ -347,6 +350,21 @@ export class ConfiguredRequest<
   }
 
   /**
+   * **unwrap**
+   *
+   * If you always want to reach _into_ the resulting data structure for the results then you
+   * can state a "dot-path" to the beginning of the "real" payload that you're interested in.
+   *
+   * This -- in essence -- provides a type of "mapper" that is very common for API _unwrapping_ an
+   * API response. What is important to know is that this unwrapping, if configured, will happen
+   * _before_ it is passed to a mapping function that may optionally be provided.
+   */
+  unwrap(offsetPath: string) {
+    this._unwrap = offsetPath;
+    return this;
+  }
+
+  /**
    * Maps the data returned from the API endpoint. This is _not_ a required feature
    * of the ConfiguredRequest but can be useful in some cases. This function uses
    * the fluent style and returns a reference to the ConfiguredRequest.
@@ -376,9 +394,8 @@ export class ConfiguredRequest<
       runTimeOptions,
       this
     );
+    let result: AxiosResponse<O>;
     try {
-      let result: AxiosResponse<O>;
-
       // MOCK or NETWORK REQUEST
       let makeRequest;
       if (req.isMockRequest) {
@@ -387,34 +404,44 @@ export class ConfiguredRequest<
         makeRequest = this.realRequest.bind(this);
       }
 
-      result = await makeRequest(req).catch((e: IGeneralizedError) => {
-        return this.handleOrThrowError(e, "on-request", req);
-      });
-
-      // OPTIONALLY MAP, ALWAYS RETURN
-      const finalResult =
-        this._mapping && typeof result === "object" && result.data
-          ? this._mapping((result?.data as unknown) as X)
-          : result?.data;
-
-      return finalResult;
+      result = await makeRequest(req);
     } catch (e) {
-      return this.handleOrThrowError(e, "surrounding-request", req);
+      result = this.handleOrThrowError(e, "surrounding-request", req);
     }
+
+    result.data = this._unwrap
+      ? (get(result.data, this._unwrap) as O)
+      : (result.data as O);
+
+    // OPTIONALLY MAP, ALWAYS RETURN
+    const finalResult =
+      this._mapping && typeof result === "object" && result.data
+        ? this._mapping((result?.data as unknown) as X)
+        : result?.data;
+
+    return finalResult;
   }
 
   private handleOrThrowError(
     e: IGeneralizedError,
     location: string,
     request?: ActiveRequest<I, O>
-  ) {
+  ): AxiosResponse<O> {
     const err = ActiveRequestError.wrap(e, location, request);
     const handler = this._errorHandler ? this._errorHandler : () => false;
-    const handled = handler(err);
+
+    const handled: O = handler(err);
 
     if (!handled) throw err;
 
-    return handled;
+    return {
+      request: {},
+      statusText: `An error was handled by the ConfiguredRequest handler [${e.message}]`,
+      headers: request?.headers || {},
+      config: request?.axiosOptions || {},
+      status: HttpStatusCodes.Accepted,
+      data: handled
+    };
   }
 
   /**
@@ -528,6 +555,7 @@ export class ConfiguredRequest<
       body,
       isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
       mockConfig,
+      ...(this._unwrap ? { unwrap: this._unwrap } : {}),
       axiosOptions
     };
 

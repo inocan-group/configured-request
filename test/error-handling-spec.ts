@@ -12,25 +12,25 @@ describe("Error handling => ", () => {
       .errorHandler(handle)
       .seal();
 
+    let response;
     try {
-      const response = await badApi.request();
-      console.log(response, errors);
-
-      expect(response).to.equal(undefined);
-      expect(errors).to.have.lengthOf(1);
-      expect(errors[0].config.url).to.equal("https://dev.null");
+      response = await badApi.request();
     } catch (e) {
       throw new Error(
         `Error handler should catch all errors! Error: ${e.message}`
       );
     }
+    expect(response).to.equal(true);
+
+    expect(errors).to.have.lengthOf(1);
+    expect(errors[0].config.url).to.equal("https://dev.null");
   });
 
   it("calling a valid URL but to an {id} which is NOT valid (422) is handled that can't be processed returns a 422", async () => {
     const errors: ActiveRequestError[] = [];
     const handle = (e: ActiveRequestError) => {
       errors.push(e);
-      return { data: true };
+      return true;
     };
     const badApi = ConfiguredRequest.get(
       "https://www.iheartjane.com/api/v1/products/0"
