@@ -8,6 +8,7 @@ import { SealedRequest } from "./SealedRequest";
 import { DynamicSymbol, isCalculator } from "../cr-types";
 import { extract } from "../shared/extract";
 import { dynamicUpdate } from "../shared";
+import get from "lodash.get";
 export const DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
     "Cache-Control": "no-cache",
@@ -198,6 +199,20 @@ export class ConfiguredRequest {
         }
     }
     /**
+     * **unwrap**
+     *
+     * If you always want to reach _into_ the resulting data structure for the results then you
+     * can state a "dot-path" to the beginning of the "real" payload that you're interested in.
+     *
+     * This -- in essence -- provides a type of "mapper" that is very common for API _unwrapping_ an
+     * API response. What is important to know is that this unwrapping, if configured, will happen
+     * _before_ it is passed to a mapping function that may optionally be provided.
+     */
+    unwrap(offsetPath) {
+        this._unwrap = offsetPath;
+        return this;
+    }
+    /**
      * Maps the data returned from the API endpoint. This is _not_ a required feature
      * of the ConfiguredRequest but can be useful in some cases. This function uses
      * the fluent style and returns a reference to the ConfiguredRequest.
@@ -218,8 +233,8 @@ export class ConfiguredRequest {
      */
     async request(requestProps, runTimeOptions = {}) {
         const req = new ActiveRequest(requestProps, runTimeOptions, this);
+        let result;
         try {
-            let result;
             // MOCK or NETWORK REQUEST
             let makeRequest;
             if (req.isMockRequest) {
@@ -228,18 +243,19 @@ export class ConfiguredRequest {
             else {
                 makeRequest = this.realRequest.bind(this);
             }
-            result = await makeRequest(req).catch((e) => {
-                return this.handleOrThrowError(e, "on-request", req);
-            });
-            // OPTIONALLY MAP, ALWAYS RETURN
-            const finalResult = this._mapping && typeof result === "object" && result.data
-                ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
-                : result === null || result === void 0 ? void 0 : result.data;
-            return finalResult;
+            result = await makeRequest(req);
         }
         catch (e) {
-            return this.handleOrThrowError(e, "surrounding-request", req);
+            result = this.handleOrThrowError(e, "surrounding-request", req);
         }
+        result.data = this._unwrap
+            ? get(result.data, this._unwrap)
+            : result.data;
+        // OPTIONALLY MAP, ALWAYS RETURN
+        const finalResult = this._mapping && typeof result === "object" && result.data
+            ? this._mapping(result === null || result === void 0 ? void 0 : result.data)
+            : result === null || result === void 0 ? void 0 : result.data;
+        return finalResult;
     }
     handleOrThrowError(e, location, request) {
         const err = ActiveRequestError.wrap(e, location, request);
@@ -247,7 +263,14 @@ export class ConfiguredRequest {
         const handled = handler(err);
         if (!handled)
             throw err;
-        return handled;
+        return {
+            request: {},
+            statusText: `An error was handled by the ConfiguredRequest handler [${e.message}]`,
+            headers: (request === null || request === void 0 ? void 0 : request.headers) || {},
+            config: (request === null || request === void 0 ? void 0 : request.axiosOptions) || {},
+            status: HttpStatusCodes.Accepted,
+            data: handled
+        };
     }
     /**
      * If there are Axios request options which you which to pass along for every request
@@ -314,21 +337,12 @@ export class ConfiguredRequest {
             "authBlacklist",
             "db"
         ]);
-        const apiRequest = {
-            props: props,
-            method: this._method,
-            url: hasQueryParameters
+        const apiRequest = Object.assign(Object.assign({ props: props, method: this._method, url: hasQueryParameters
                 ? url + "?" + queryString.stringify(queryParameters)
-                : url,
-            headers,
-            queryParameters,
-            payload: body ? "" : undefined,
+                : url, headers,
+            queryParameters, payload: body ? "" : undefined, // defined below
             bodyType,
-            body,
-            isMockRequest: this.isMockRequest(runTimeOptions) ? true : false,
-            mockConfig,
-            axiosOptions
-        };
+            body, isMockRequest: this.isMockRequest(runTimeOptions) ? true : false, mockConfig }, (this._unwrap ? { unwrap: this._unwrap } : {})), { axiosOptions });
         return addBodyPayload(this.runCalculations(apiRequest), this._formSeparator);
     }
     /**

@@ -42,4 +42,26 @@ describe("Mapping results", () => {
     const results = await API.mock();
     results.data.forEach(i => expect(typeof i.id).to.equal("string"));
   });
+
+  it("When unwrap is configured it will unwrap the result it gets as a response", async () => {
+    const mock = () => ({
+      data: {
+        foobar: {
+          customers: [
+            { id: 1, name: "bob" },
+            { id: 2, name: "mary" }
+          ]
+        }
+      }
+    });
+
+    const API = ConfiguredRequest.get("https://test.com/customers")
+      .mockFn(mock)
+      .unwrap("data.foobar.customers")
+      .seal();
+
+    expect(await API.mock())
+      .to.be.an("array")
+      .and.to.have.lengthOf(2);
+  });
 });
