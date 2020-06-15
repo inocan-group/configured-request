@@ -1,6 +1,6 @@
 {
   "name": "configured-request",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "configured-request",
   "license": "MIT",
   "repository": "https://github.com/inocan-group/configured-request",
@@ -58,11 +58,11 @@
     "simple-git": "^1.131.0",
     "test-console": "^1.1.0",
     "ts-loader": "^6.2.1",
-    "ts-node": "^8.6.2",
-    "tslint": "^6.0.0",
+    "ts-node": "^8.10.2",
+    "tslint": "^6.1.2",
     "tslint-config-prettier": "^1.18.0",
     "typed-conversions": "^0.10.2",
-    "typescript": "^3.7.5",
+    "typescript": "^3.9.5",
     "webpack": "^4.41.6",
     "webpack-cli": "^3.3.11",
     "webpack-node-externals": "^1.7.2"

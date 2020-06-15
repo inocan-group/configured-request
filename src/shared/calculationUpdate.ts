@@ -1,14 +1,14 @@
 import {
-  ICalcSymbolOutput,
   DynamicStateLocation,
+  ICalcSymbolOutput,
   KnownLocation
 } from "../cr-types";
 
-export function calculationUpdate<I, O>(
-  library: KnownLocation<ICalcSymbolOutput<I, O>>[],
+export function calculationUpdate<I>(
+  library: KnownLocation<ICalcSymbolOutput<I>>[],
   location: DynamicStateLocation,
-  newItems: ICalcSymbolOutput<I, O>[]
-): KnownLocation<ICalcSymbolOutput<I, O>>[] {
+  newItems: ICalcSymbolOutput<I>[]
+): KnownLocation<ICalcSymbolOutput<I>>[] {
   return library
     .filter(i => i.location === location)
     .concat(...newItems.map(ni => ({ ...ni, location })));

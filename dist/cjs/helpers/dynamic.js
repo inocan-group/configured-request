@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.dynamic = void 0;
 const cr_types_1 = require("../cr-types");
 function dynamic(defaultValue = undefined, required = false) {
     return (prop) => {

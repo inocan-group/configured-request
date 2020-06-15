@@ -1,8 +1,8 @@
+import { CalcOption, IApiInputWithBody, IApiInputWithoutBody, IApiIntermediate, IApiMock, IApiOutput, IConfiguredApiRequest, IErrorHandler } from "../index";
+import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 import { IDictionary, url } from "common-types";
-import { IApiMock, IConfiguredApiRequest, IApiInputWithBody, IApiInputWithoutBody, IApiOutput, IApiIntermediate, IErrorHandler, CalcOption } from "../index";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types";
 export declare const DEFAULT_HEADERS: IDictionary<string>;
 /**
  * **ConfiguredRequest**
@@ -158,11 +158,11 @@ MDB = any> {
     seal(): SealedRequest<I, O>;
     toString(): string;
     toJSON(): {
-        method: "get" | "put" | "post" | "delete" | "patch";
+        method: "get" | "delete" | "post" | "put" | "patch";
         url: string;
-        calculators: (string & keyof I)[];
-        requiredParameters: (string & keyof O)[];
-        optionalParameters: (string & keyof O)[];
+        calculators: string[];
+        requiredParameters: string[];
+        optionalParameters: string[];
     };
     /**
      * Pulls the dynamic segments from the URL string and adds them to

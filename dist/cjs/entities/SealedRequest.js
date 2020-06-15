@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SealedRequest = void 0;
 class SealedRequest {
     constructor(req) {
         this.req = req;

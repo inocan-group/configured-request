@@ -1,13 +1,13 @@
 import {
-  IApiInput,
-  IDynamicCalculator,
   DynamicSymbol,
+  IApiInput,
   IApiOutput,
-  ICalcSymbolOutput
+  ICalcSymbolOutput,
+  IDynamicCalculator
 } from "../cr-types";
 
 export function calc<I extends IApiInput, O extends IApiOutput>(
-  fn: IDynamicCalculator<I, O>
+  fn: IDynamicCalculator<I>
 ) {
   // the
   return (prop: keyof I & string) => {
@@ -15,6 +15,6 @@ export function calc<I extends IApiInput, O extends IApiOutput>(
       symbol: DynamicSymbol.calc,
       prop,
       fn
-    } as ICalcSymbolOutput<I, O>;
+    } as ICalcSymbolOutput<I>;
   };
 }

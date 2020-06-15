@@ -1,13 +1,13 @@
-import { HttpStatusCodes, wait } from "common-types";
-import { DynamicStateLocation, isDynamicProp, ActiveRequest, ApiBodyType } from "../index";
-import { calculationUpdate, addBodyPayload, fakeAxiosResponse, between } from "../shared";
-import { ConfiguredRequestError, ActiveRequestError } from "../errors";
 import * as queryString from "query-string";
+import { ActiveRequest, ApiBodyType, DynamicStateLocation, isDynamicProp } from "../index";
+import { ActiveRequestError, ConfiguredRequestError } from "../errors";
+import { DynamicSymbol, isCalculator } from "../cr-types";
+import { HttpStatusCodes, wait } from "common-types";
+import { addBodyPayload, between, calculationUpdate, fakeAxiosResponse } from "../shared";
 import axios from "axios";
 import { SealedRequest } from "./SealedRequest";
-import { DynamicSymbol, isCalculator } from "../cr-types";
-import { extract } from "../shared/extract";
 import { dynamicUpdate } from "../shared";
+import { extract } from "../shared/extract";
 import get from "lodash.get";
 export const DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
@@ -394,8 +394,7 @@ export class ConfiguredRequest {
                     symbol: DynamicSymbol.dynamic,
                     prop: dynamicProp,
                     required: true,
-                    location: DynamicStateLocation.url,
-                    defaultValue: undefined
+                    location: DynamicStateLocation.url
                 });
             });
         }
@@ -492,6 +491,9 @@ export class ConfiguredRequest {
                 let b = apiRequest.body;
                 b[calc.prop] = value;
                 apiRequest.body = b;
+            }
+            else {
+                // TODO: should we handle non JSON/Form Field data in body
             }
         });
         return apiRequest;

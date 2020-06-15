@@ -1,7 +1,7 @@
+import { AxiosError, AxiosRequestConfig } from "axios";
 import { IDictionary, datetime, seconds } from "common-types";
-import { ConfiguredRequest } from "./entities/ConfiguredRequest";
-import { AxiosRequestConfig, AxiosError } from "axios";
 import { ActiveRequest } from "./entities/ActiveRequest";
+import { ConfiguredRequest } from "./entities/ConfiguredRequest";
 export interface IRequestInfo {
     method: IRequestVerb;
     headers: IDictionary<Scalar>;
@@ -83,7 +83,7 @@ export declare type IApiInput = IApiInputWithBody | IApiInputWithoutBody;
 export declare type IApiOutput = any;
 export interface IApiIntermediate extends IDictionary {
 }
-export interface IDynamicCalculator<I extends IApiInput, O extends Object> {
+export interface IDynamicCalculator<I extends IApiInput> {
     (request: IConfiguredApiRequest<I>["props"], config: Omit<IConfiguredApiRequest<I>, "props">): Scalar;
     deps?: string[];
 }
@@ -92,23 +92,23 @@ export declare enum DynamicSymbol {
     calc = "calc"
 }
 export declare type IDynamicSymbol = keyof typeof DynamicSymbol;
-export declare function isCalculator<I extends IApiInput, O extends IApiOutput>(dp: IDynamicProperty<I, O>): dp is ICalcSymbolOutput<I, O>;
+export declare function isCalculator<I extends IApiInput, O extends IApiOutput>(dp: IDynamicProperty<I, O>): dp is ICalcSymbolOutput<I>;
 export declare function isDynamicProp<I extends IApiInput, O extends IApiOutput>(dp: IDynamicProperty<I, O>): dp is IDynamicProperty<I, O>;
-export interface IBaseSymbolOutput<O extends IApiOutput> {
+export interface IBaseSymbolOutput {
     location?: DynamicStateLocation;
     symbol: DynamicSymbol;
-    prop: string & keyof O;
+    prop: string;
 }
-export interface IDynamicSymbolOutput<V = Scalar, O = {}> extends IBaseSymbolOutput<O> {
+export interface IDynamicSymbolOutput<V = Scalar> extends IBaseSymbolOutput {
     symbol: DynamicSymbol.dynamic;
-    defaultValue: V;
+    defaultValue?: V;
     required: boolean;
 }
-export interface ICalcSymbolOutput<I extends IApiInput, O extends Object> extends IBaseSymbolOutput<I> {
+export interface ICalcSymbolOutput<I extends IApiInput> extends IBaseSymbolOutput {
     symbol: DynamicSymbol.calc;
-    fn: IDynamicCalculator<I, O>;
+    fn: IDynamicCalculator<I>;
 }
-export declare type IDynamicProperty<I extends IApiInput, O extends IApiOutput, V = Scalar> = ICalcSymbolOutput<I, O> | IDynamicSymbolOutput<V, O>;
+export declare type IDynamicProperty<I extends IApiInput, O extends IApiOutput, V = Scalar> = ICalcSymbolOutput<I> | IDynamicSymbolOutput<V>;
 export declare type KnownLocation<T> = T & {
     location: DynamicStateLocation;
 };

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.calculationUpdate = void 0;
 function calculationUpdate(library, location, newItems) {
     return library
         .filter(i => i.location === location)
