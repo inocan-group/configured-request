@@ -56,7 +56,7 @@ export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
     /**
      * The HTTP request VERB for the request (aka, `get`, `put`, etc.)
      */
-    get method(): "get" | "put" | "post" | "delete" | "patch";
+    get method(): "get" | "delete" | "post" | "put" | "patch";
     /**
      * The options hash -- with the exception of the _headers_ -- which
      * will be added to the Axios request.
@@ -88,7 +88,7 @@ export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
     private requestInfo;
     toString(): string;
     toJSON(): {
-        method: "get" | "put" | "post" | "delete" | "patch";
+        method: "get" | "delete" | "post" | "put" | "patch";
         url: string;
         queryParameters: import("common-types").IDictionary<string | number | boolean>;
         headers: import("common-types").IDictionary<string | number | boolean>;

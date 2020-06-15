@@ -1,15 +1,15 @@
 import {
   DynamicStateLocation,
-  KnownLocation,
+  IApiOutput,
   IDynamicSymbolOutput,
-  IApiOutput
+  KnownLocation
 } from "../cr-types";
 
-export function dynamicUpdate<V, O extends IApiOutput>(
-  library: KnownLocation<IDynamicSymbolOutput<any, O>>[],
+export function dynamicUpdate<V>(
+  library: KnownLocation<IDynamicSymbolOutput<any>>[],
   location: DynamicStateLocation,
-  newItems: IDynamicSymbolOutput<any, O>[]
-): KnownLocation<IDynamicSymbolOutput<any, O>>[] {
+  newItems: IDynamicSymbolOutput<any>[]
+): KnownLocation<IDynamicSymbolOutput<any>>[] {
   return library
     .filter(i => i.location === location)
     .concat(...newItems.map(ni => ({ ...ni, location })));

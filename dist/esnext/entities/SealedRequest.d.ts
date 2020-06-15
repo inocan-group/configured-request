@@ -16,7 +16,7 @@ export declare class SealedRequest<I extends IApiInput, O, M = any> {
      * passed to mock functions as context) you may pass
      * it in here.
      *
-     * This property will be _not_ be used when making a real
+     * This property will _not_ be used when making a real
      * network request.
      *
      * @param db any database mocking API
@@ -43,10 +43,10 @@ export declare class SealedRequest<I extends IApiInput, O, M = any> {
     errorHandler(eh: IErrorHandler): this;
     toString(): string;
     toJSON(): {
-        method: "get" | "put" | "post" | "delete" | "patch";
+        method: "get" | "delete" | "post" | "put" | "patch";
         url: string;
-        calculators: (string & keyof I)[];
-        requiredParameters: (string & keyof O)[];
-        optionalParameters: (string & keyof O)[];
+        calculators: string[];
+        requiredParameters: string[];
+        optionalParameters: string[];
     };
 }

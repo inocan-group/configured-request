@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ActiveRequest = void 0;
 const errors_1 = require("../errors");
 class ActiveRequest {
     constructor(params, options, configuredRequest) {

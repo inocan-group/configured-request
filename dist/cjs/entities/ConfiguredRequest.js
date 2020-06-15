@@ -1,25 +1,38 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const common_types_1 = require("common-types");
-const index_1 = require("../index");
-const shared_1 = require("../shared");
-const errors_1 = require("../errors");
+exports.ConfiguredRequest = exports.DEFAULT_HEADERS = void 0;
 const queryString = __importStar(require("query-string"));
+const index_1 = require("../index");
+const errors_1 = require("../errors");
+const cr_types_1 = require("../cr-types");
+const common_types_1 = require("common-types");
+const shared_1 = require("../shared");
 const axios_1 = __importDefault(require("axios"));
 const SealedRequest_1 = require("./SealedRequest");
-const cr_types_1 = require("../cr-types");
-const extract_1 = require("../shared/extract");
 const shared_2 = require("../shared");
+const extract_1 = require("../shared/extract");
 const lodash_get_1 = __importDefault(require("lodash.get"));
 exports.DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
@@ -303,8 +316,7 @@ class ConfiguredRequest {
                     symbol: cr_types_1.DynamicSymbol.dynamic,
                     prop: dynamicProp,
                     required: true,
-                    location: index_1.DynamicStateLocation.url,
-                    defaultValue: undefined
+                    location: index_1.DynamicStateLocation.url
                 });
             });
         }
@@ -372,6 +384,8 @@ class ConfiguredRequest {
                 let b = apiRequest.body;
                 b[calc.prop] = value;
                 apiRequest.body = b;
+            }
+            else {
             }
         });
         return apiRequest;

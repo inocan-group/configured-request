@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ActiveRequestError = void 0;
 const lodash_get_1 = __importDefault(require("lodash.get"));
 class ActiveRequestError extends Error {
     constructor(e, location, request) {

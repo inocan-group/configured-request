@@ -1,48 +1,50 @@
-import { IDictionary, url, HttpStatusCodes, wait } from "common-types";
+import * as queryString from "query-string";
+
 import {
-  DynamicStateLocation,
-  IDynamicProperty,
-  IRequestVerb,
-  IApiMock,
-  Scalar,
-  IConfiguredApiRequest,
-  IApiInputWithBody,
-  IApiInputWithoutBody,
-  isDynamicProp,
-  IApiOutput,
-  IApiIntermediate,
-  IDynamicSymbolOutput,
-  IErrorHandler,
   ActiveRequest,
   ApiBodyType,
-  CalcOption
+  CalcOption,
+  DynamicStateLocation,
+  IApiInputWithBody,
+  IApiInputWithoutBody,
+  IApiIntermediate,
+  IApiMock,
+  IApiOutput,
+  IConfiguredApiRequest,
+  IDynamicProperty,
+  IDynamicSymbolOutput,
+  IErrorHandler,
+  IRequestVerb,
+  Scalar,
+  isDynamicProp
 } from "../index";
 import {
-  calculationUpdate,
-  addBodyPayload,
-  fakeAxiosResponse,
-  between
-} from "../shared";
-import {
-  ConfiguredRequestError,
   ActiveRequestError,
+  ConfiguredRequestError,
   IGeneralizedError
 } from "../errors";
-import * as queryString from "query-string";
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios";
-import { SealedRequest } from "./SealedRequest";
 import {
-  IApiBodyType,
-  IAllRequestOptions,
-  IMockOptions,
-  IApiInput,
   DynamicSymbol,
-  isCalculator,
+  IAllRequestOptions,
+  IApiBodyType,
+  IApiInput,
   ICalcSymbolOutput,
-  INetworkDelaySetting
+  IMockOptions,
+  INetworkDelaySetting,
+  isCalculator
 } from "../cr-types";
-import { extract } from "../shared/extract";
+import { HttpStatusCodes, IDictionary, url, wait } from "common-types";
+import {
+  addBodyPayload,
+  between,
+  calculationUpdate,
+  fakeAxiosResponse
+} from "../shared";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+
+import { SealedRequest } from "./SealedRequest";
 import { dynamicUpdate } from "../shared";
+import { extract } from "../shared/extract";
 import get from "lodash.get";
 
 export const DEFAULT_HEADERS: IDictionary<string> = {
@@ -107,13 +109,13 @@ export class ConfiguredRequest<
    * The various _dynamic_ aspects of the API call
    */
   private _dynamics: Array<
-    IDynamicSymbolOutput<any, O> & { location: DynamicStateLocation }
+    IDynamicSymbolOutput<any> & { location: DynamicStateLocation }
   > = [];
   /**
    * Properties which have calculations associated
    */
   private _calculations: Array<
-    ICalcSymbolOutput<I, O> & { location: DynamicStateLocation }
+    ICalcSymbolOutput<I> & { location: DynamicStateLocation }
   > = [];
   private _method: IRequestVerb;
   //#region static initializers
@@ -214,13 +216,13 @@ export class ConfiguredRequest<
     const [staticProps, dynamics, calculations] = this.parseParameters(headers);
     this._headers = staticProps;
 
-    this._dynamics = dynamicUpdate<I, O>(
+    this._dynamics = dynamicUpdate<I>(
       this._dynamics,
       DynamicStateLocation.header,
       dynamics
     );
 
-    this._calculations = calculationUpdate<I, O>(
+    this._calculations = calculationUpdate<I>(
       this._calculations,
       DynamicStateLocation.header,
       calculations
@@ -254,13 +256,13 @@ export class ConfiguredRequest<
     const [staticProps, dynamics, calculations] = this.parseParameters(qp);
     this._qp = staticProps;
 
-    this._dynamics = dynamicUpdate<I, O>(
+    this._dynamics = dynamicUpdate<I>(
       this._dynamics,
       DynamicStateLocation.queryParameter,
       dynamics
     );
 
-    this._calculations = calculationUpdate<I, O>(
+    this._calculations = calculationUpdate<I>(
       this._calculations,
       DynamicStateLocation.queryParameter,
       calculations
@@ -291,13 +293,13 @@ export class ConfiguredRequest<
     }
     const [staticProps, dynamics, calculations] = this.parseParameters(content);
     this._body = staticProps;
-    this._dynamics = dynamicUpdate<I, O>(
+    this._dynamics = dynamicUpdate<I>(
       this._dynamics,
       DynamicStateLocation.body,
       dynamics
     );
 
-    this._calculations = calculationUpdate<I, O>(
+    this._calculations = calculationUpdate<I>(
       this._calculations,
       DynamicStateLocation.body,
       calculations
@@ -629,8 +631,7 @@ export class ConfiguredRequest<
           symbol: DynamicSymbol.dynamic,
           prop: dynamicProp,
           required: true,
-          location: DynamicStateLocation.url,
-          defaultValue: undefined
+          location: DynamicStateLocation.url
         });
       });
     }
@@ -755,8 +756,10 @@ export class ConfiguredRequest<
         ["JSON", "formFields"].includes(apiRequest.bodyType)
       ) {
         let b: I["body"] & IDictionary = apiRequest.body;
-        b[calc.prop] = value;
+        b[calc.prop as keyof typeof b] = value;
         apiRequest.body = b;
+      } else {
+        // TODO: should we handle non JSON/Form Field data in body
       }
     });
     return apiRequest;
@@ -773,8 +776,8 @@ export class ConfiguredRequest<
     hash: IDictionary
   ): [
     IDictionary<Scalar>,
-    IDynamicSymbolOutput<any, O>[],
-    ICalcSymbolOutput<I, O>[]
+    IDynamicSymbolOutput<any>[],
+    ICalcSymbolOutput<I>[]
   ] {
     // gather the static props
     let staticProps: IDictionary<Scalar> = {};
@@ -783,8 +786,8 @@ export class ConfiguredRequest<
       .forEach(i => (staticProps[i] = hash[i]));
 
     // gather the dynamic props
-    const dynamic: IDynamicSymbolOutput<any, O>[] = [];
-    const calculations: ICalcSymbolOutput<I, O>[] = [];
+    const dynamic: IDynamicSymbolOutput<any>[] = [];
+    const calculations: ICalcSymbolOutput<I>[] = [];
     Object.keys(hash)
       .filter(i => typeof hash[i] === "function")
       .forEach(i => {

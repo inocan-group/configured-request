@@ -29,7 +29,7 @@ export class SealedRequest {
      * passed to mock functions as context) you may pass
      * it in here.
      *
-     * This property will be _not_ be used when making a real
+     * This property will _not_ be used when making a real
      * network request.
      *
      * @param db any database mocking API

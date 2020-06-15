@@ -13,7 +13,7 @@ export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
     get queryParameters(): import("common-types").IDictionary<string | number | boolean>;
     get url(): string;
     get body(): I["body"];
-    get method(): "get" | "put" | "post" | "delete" | "patch";
+    get method(): "get" | "delete" | "post" | "put" | "patch";
     get axiosOptions(): import("axios").AxiosRequestConfig;
     get isMockRequest(): boolean;
     get mockConfig(): import("../cr-types").IMockOptions<any>;
@@ -21,7 +21,7 @@ export declare class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
     private requestInfo;
     toString(): string;
     toJSON(): {
-        method: "get" | "put" | "post" | "delete" | "patch";
+        method: "get" | "delete" | "post" | "put" | "patch";
         url: string;
         queryParameters: import("common-types").IDictionary<string | number | boolean>;
         headers: import("common-types").IDictionary<string | number | boolean>;
