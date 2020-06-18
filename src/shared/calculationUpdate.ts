@@ -9,7 +9,7 @@ export function calculationUpdate<I>(
   location: DynamicStateLocation,
   newItems: ICalcSymbolOutput<I>[]
 ): KnownLocation<ICalcSymbolOutput<I>>[] {
-  return library
+  return  library.concat(...library
     .filter(i => i.location === location)
-    .concat(...newItems.map(ni => ({ ...ni, location })));
+    .concat(...newItems.map(ni => ({ ...ni, location }))));
 }
