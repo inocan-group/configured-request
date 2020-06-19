@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dynamicUpdate = void 0;
 function dynamicUpdate(library, location, newItems) {
-    return library
+    return library.concat(...library
         .filter(i => i.location === location)
-        .concat(...newItems.map(ni => (Object.assign(Object.assign({}, ni), { location }))));
+        .concat(...newItems.map(ni => (Object.assign(Object.assign({}, ni), { location })))));
 }
 exports.dynamicUpdate = dynamicUpdate;

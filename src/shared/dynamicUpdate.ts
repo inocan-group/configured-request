@@ -10,7 +10,7 @@ export function dynamicUpdate<V>(
   location: DynamicStateLocation,
   newItems: IDynamicSymbolOutput<any>[]
 ): KnownLocation<IDynamicSymbolOutput<any>>[] {
-  return library
+  return  library.concat(...library
     .filter(i => i.location === location)
-    .concat(...newItems.map(ni => ({ ...ni, location })));
+    .concat(...newItems.map(ni => ({ ...ni, location }))));
 }
