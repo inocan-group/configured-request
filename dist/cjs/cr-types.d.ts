@@ -74,7 +74,7 @@ export interface ILiteralType {
 }
 export declare function isLiteralType<I extends IApiInput>(body: I["body"] | ILiteralType): body is ILiteralType;
 export interface IApiInputWithBody extends IDictionary {
-    body: IDictionary<Scalar>;
+    body: IDictionary;
 }
 export interface IApiInputWithoutBody extends IDictionary {
     body?: undefined;
