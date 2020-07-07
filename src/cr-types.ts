@@ -184,7 +184,7 @@ export function isLiteralType<I extends IApiInput>(
 }
 
 export interface IApiInputWithBody extends IDictionary {
-  body: IDictionary<Scalar>;
+  body: IDictionary;
 }
 
 export interface IApiInputWithoutBody extends IDictionary {
