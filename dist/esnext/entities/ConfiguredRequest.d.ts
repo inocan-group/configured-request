@@ -3,7 +3,6 @@ import { IAllRequestOptions, IApiInput, INetworkDelaySetting } from "../cr-types
 import { IDictionary, url } from "common-types";
 import { AxiosRequestConfig } from "axios";
 import { SealedRequest } from "./SealedRequest";
-export declare const DEFAULT_HEADERS: IDictionary<string>;
 /**
  * **ConfiguredRequest**
  *
