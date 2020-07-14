@@ -16,9 +16,6 @@ var DynamicStateLocation;
     DynamicStateLocation["header"] = "header";
     DynamicStateLocation["body"] = "body";
 })(DynamicStateLocation = exports.DynamicStateLocation || (exports.DynamicStateLocation = {}));
-const DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36"
-};
 var ApiBodyType;
 (function (ApiBodyType) {
     ApiBodyType["JSON"] = "JSON";

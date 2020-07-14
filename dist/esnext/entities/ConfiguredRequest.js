@@ -9,11 +9,6 @@ import { SealedRequest } from "./SealedRequest";
 import { dynamicUpdate } from "../shared";
 import { extract } from "../shared/extract";
 import get from "lodash.get";
-export const DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive"
-};
 /**
  * **ConfiguredRequest**
  *
@@ -320,7 +315,7 @@ export class ConfiguredRequest {
             JSON: "application/json",
             formFields: "multipart/form-data"
         };
-        let headers = Object.assign(Object.assign(Object.assign(Object.assign({}, DEFAULT_HEADERS), (verbHasBody
+        let headers = Object.assign(Object.assign(Object.assign({}, (verbHasBody
             ? { "Content-Type": ctLookup[this._bodyType] }
             : {})), this._headers), this.getDynamics(DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)

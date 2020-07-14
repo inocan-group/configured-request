@@ -47,13 +47,6 @@ import { dynamicUpdate } from "../shared";
 import { extract } from "../shared/extract";
 import get from "lodash.get";
 
-export const DEFAULT_HEADERS: IDictionary<string> = {
-  "User-Agent":
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
-  "Cache-Control": "no-cache",
-  Connection: "keep-alive"
-};
-
 /**
  * **ConfiguredRequest**
  *
@@ -510,7 +503,6 @@ export class ConfiguredRequest<
     };
 
     let headers = {
-      ...DEFAULT_HEADERS,
       ...(verbHasBody
         ? { "Content-Type": ctLookup[this._bodyType as keyof typeof ctLookup] }
         : {}),
