@@ -22,7 +22,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConfiguredRequest = exports.DEFAULT_HEADERS = void 0;
+exports.ConfiguredRequest = void 0;
 const queryString = __importStar(require("query-string"));
 const index_1 = require("../index");
 const errors_1 = require("../errors");
@@ -34,11 +34,6 @@ const SealedRequest_1 = require("./SealedRequest");
 const shared_2 = require("../shared");
 const extract_1 = require("../shared/extract");
 const lodash_get_1 = __importDefault(require("lodash.get"));
-exports.DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive"
-};
 class ConfiguredRequest {
     constructor() {
         this._qp = {};
@@ -253,7 +248,7 @@ class ConfiguredRequest {
             JSON: "application/json",
             formFields: "multipart/form-data"
         };
-        let headers = Object.assign(Object.assign(Object.assign(Object.assign({}, exports.DEFAULT_HEADERS), (verbHasBody
+        let headers = Object.assign(Object.assign(Object.assign({}, (verbHasBody
             ? { "Content-Type": ctLookup[this._bodyType] }
             : {})), this._headers), this.getDynamics(index_1.DynamicStateLocation.header, props));
         const bodyType = ["get", "delete"].includes(this._method)
