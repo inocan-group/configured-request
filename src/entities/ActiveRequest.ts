@@ -98,7 +98,7 @@ export class ActiveRequest<I extends IApiInput, O, X = any, M = any> {
    * type.
    */
   get body(): I["body"] {
-    return this.requestInfo().body;
+    return this.requestInfo().payload;
   }
 
   /**
