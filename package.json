@@ -71,7 +71,7 @@
     "node": ">=8.0.0"
   },
   "dependencies": {
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "common-types": "^1.13.1",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
